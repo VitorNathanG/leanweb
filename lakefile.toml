@@ -1,0 +1,15 @@
+name = "leanweb"
+version = "0.1.0"
+defaultTargets = ["LeanWeb", "leanweb", "leanweb_tests"]
+moreLeanArgs = ["-DwarningAsError=true"]
+
+[[lean_lib]]
+name = "LeanWeb"
+
+[[lean_exe]]
+name = "leanweb"
+root = "Main"
+
+[[lean_exe]]
+name = "leanweb_tests"
+root = "Tests"
