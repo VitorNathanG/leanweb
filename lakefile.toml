@@ -1,6 +1,6 @@
 name = "leanweb"
 version = "0.1.0"
-defaultTargets = ["LeanWeb", "leanweb", "leanweb_tests"]
+defaultTargets = ["LeanWeb", "leanweb", "leanweb_tests", "leanweb_transport_tests"]
 moreLeanArgs = ["-DwarningAsError=true"]
 
 [[lean_lib]]
@@ -13,3 +13,7 @@ root = "Main"
 [[lean_exe]]
 name = "leanweb_tests"
 root = "Tests"
+
+[[lean_exe]]
+name = "leanweb_transport_tests"
+root = "tests.TransportMain"

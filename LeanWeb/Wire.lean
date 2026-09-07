@@ -21,7 +21,7 @@ private def tokenChar (c : Char) : Bool :=
 
 private def trimOWS (s : String) : String :=
   let space := fun c => c == ' ' || c == '\t'
-  String.mk ((s.toList.dropWhile space).reverse.dropWhile space).reverse
+  String.ofList ((s.toList.dropWhile space).reverse.dropWhile space).reverse
 
 /-- Scan only the header block; a CR at the end of an incomplete buffer is allowed. -/
 private def headerEnd (bytes : ByteArray) : Except Response (Option Nat) := do

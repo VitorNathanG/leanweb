@@ -13,7 +13,7 @@ delivery order and development workflow have their own authoritative documents.
 ## Run
 
 Install [elan](https://github.com/leanprover/elan#installation), Lean's toolchain manager.
-The repository pins Lean **4.24.0** in `lean-toolchain`; there are no external Lean dependencies.
+The repository pins Lean **4.33.1** in `lean-toolchain`; there are no external Lean dependencies.
 
 ```sh
 lake build
@@ -175,15 +175,28 @@ OS, compiler, and Lean runtime remain outside the application proofs.
 - Responses compute Content-Length from UTF-8 bytes. HEAD suppresses the body while retaining the length. Application strings cannot become response headers; custom headers are not yet supported.
 - Handler exceptions become 500 responses without exposing exception details. Connection IO errors are isolated from the accept loop.
 
-**Development transport only:** the server is sequential and has no read, handler,
-write, or shutdown deadlines. One slow client can block all later requests. It also
-has no TLS, graceful shutdown API, or overload control. Do not expose it directly to
-untrusted networks. A deadline-enforcing proxy can mitigate slow clients, but does
-not make this transport production-ready. Lean 4.24's internal TCP cancellation API
-has a runtime issue encountered during development; cancellation is deliberately
-not used. The [source assessment](research/lean-tcp-cancellation/README.md) records
-the precise evidence and its limits. Internal TCP APIs are another reason the
-toolchain is pinned.
+`Server.Config` defaults to **32 active connections** (`maxConnections`) and a
+**5,000 ms total request-read deadline** (`requestTimeoutMs`). Both must be positive.
+The deadline starts when the server accepts a connection and includes all request
+fragments and parsing; incoming bytes do not refresh it. Expiry closes the connection
+without an HTTP response or invoking a handler. A request must be selected before
+expiry; this is not a deadline on the handler or response write.
+
+At capacity the single accept loop waits for a worker to finish. Excess clients
+wait in the OS listen backlog, subject to OS overflow behavior, rather than getting
+an HTTP 503. Time in that backlog is **not** covered by the request-read deadline.
+Workers retain their slots through handler execution and awaited sends; the runtime
+finalizer closes each socket afterward. Handlers and injected services may now run
+concurrently and must synchronize shared mutable state themselves.
+
+**Development transport only:** there are still no handler/write deadlines, TLS,
+or graceful-stop API. Hanging handlers or stalled writes can exhaust all slots.
+The limit covers server-owned connection workers, not arbitrary work or memory
+allocated by a handler. Do not expose the server directly to untrusted networks.
+The [runtime qualification](research/lean-4.33-receive-deadline/README.md) records
+receive cancellation tests, finite-run resource observations, and remaining
+listener/runtime error-path limitations. It is not a resource-safety proof or
+production qualification. Internal TCP APIs remain part of the toolchain pin.
 
 ## Verify
 
@@ -198,7 +211,10 @@ The socket suite starts and stops its own server on an available loopback port.
 It checks fragmented UTF-8 requests, response framing, HEAD, exact routing,
 dependency injection, malformed input, unsupported features, premature EOF,
 size boundaries, typed body/query decoding, division results, and recovery after
-rejection. Decoder tests also check numeric syntax, leading zeros, digit limits,
+rejection. A separate test-only executable exercises concurrent healthy/slow clients,
+absolute deadlines, admission backpressure, completion races, disconnects, stalled
+writes, handler errors, and Linux self-process descriptor recovery. Decoder tests
+also check numeric syntax, leading zeros, digit limits,
 range boundaries, composition, source relations, and effect short-circuiting.
 CI runs the build, executable tests, and workflow checks. Focused commands and
 proof-dependency inspection are documented in [Development](docs/development.md).

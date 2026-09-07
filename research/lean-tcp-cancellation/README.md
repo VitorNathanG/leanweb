@@ -1,5 +1,9 @@
 # Pending TCP Receive Cancellation
 
+Historical assessment of Lean 4.24. The current toolchain's replacement evidence
+is the [4.33.1 qualification](../lean-4.33-receive-deadline/README.md); the source
+findings below remain scoped to the old pin.
+
 ## Question
 
 Can the pinned Lean runtime's internal `Socket.cancelRecv` safely implement a

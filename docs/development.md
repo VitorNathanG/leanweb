@@ -25,11 +25,15 @@ git diff --check
 git diff --cached --check
 ```
 
-`lake build` includes the library, server, test entrypoint, and proof-bearing
+`lake build` includes the library, server, test entrypoints, and proof-bearing
 example; `lake exe leanweb_tests` actually executes tests. A successful build
 alone is not a successful test run. The socket suite starts its own built server
 on an available loopback port and stops that owned child when finished. It does
-not require a manually running server or contact an external service.
+not require a manually running server or contact an external service. The
+`leanweb_transport_tests` executable supplies test-only handlers and self-process
+FD sampling, not public example routes. Its short deadlines keep the suite bounded;
+timing races accept either valid terminal outcome. FD recovery tests are Linux-only
+and must not be described as memory-leak or hard resource-bound proofs.
 
 Use explicit budgets: typically up to 120 seconds for a build or Lean test command
 and 40 seconds for the socket suite; allow toolchain downloads/cold builds a
@@ -41,6 +45,8 @@ Focused checks shorten feedback:
 ```sh
 lake build LeanWeb.Router LeanWeb.Decoding LeanWeb.Example
 lake build LeanWeb.WireTests LeanWeb.DecodingTests
+lake build leanweb_transport_tests
+node --test --test-name-pattern='bounded connections' tests/http.test.mjs
 ```
 
 For important proof changes, use `lake env lean` on an owned ignored scratch

@@ -18,7 +18,8 @@ owns future delivery order. Read-only reviews need no report or directory.
 
 | ID | Status | Owner/task | Question and scope | Directory | Reference | Conclusion and uncertainty | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `lean-tcp-cancellation` | complete | root / workflow-bootstrap | Is the pinned pending-receive cancellation path safe to use for deadlines? Source inspection only. | `research/lean-tcp-cancellation/` | Lean v4.24.0; exact commit in report | Cancellation decrements a raw payload pointer rather than its Lean wrapper. Do not use it for deadlines without qualification. No reproducible crash probe or fixed-version qualification in this report. | [Source assessment](../lean-tcp-cancellation/README.md) |
+| `lean-tcp-cancellation` | superseded | root / workflow-bootstrap | Is the 4.24 pending-receive cancellation path safe to use for deadlines? Source inspection only. | `research/lean-tcp-cancellation/` | Lean v4.24.0; exact commit in report | Historical payload/wrapper mismatch; no crash reproduction. Replaced for the current pin by the 4.33.1 qualification below. | [Source assessment](../lean-tcp-cancellation/README.md) |
+| `lean-4.33-receive-deadline` | complete | compatibility-researcher / receive-deadline-qualification; root integration | Qualify pending receive cancellation, timer cleanup, and completion races for the bounded server slice; exclude write/handler deadlines. | `research/lean-4.33-receive-deadline/` | Lean v4.33.1, `819816b2e0a3bf405af45ae5c7af2491d8f5bee6` | Three compiled probe runs passed; actual-server deadline/backpressure and FD regressions passed. Listener-error cleanup and general memory/resource safety remain unqualified. | [Qualification](../lean-4.33-receive-deadline/README.md) |
 
 ## Assignment Rules
 

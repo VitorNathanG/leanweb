@@ -5,14 +5,9 @@ Future work only, in execution order. Acceptance gates belong in
 [Architecture](docs/architecture.md). Supporting research should enable the next
 working behavior, not postpone it indefinitely.
 
-- Deliver a bounded concurrent server slice toward the operational server gate.
-  Resolve the pinned runtime's receive-cancellation ownership issue through a
-  qualified toolchain change or transport choice, then implement connection
-  admission, explicit ownership, and read deadlines in the actual server. Show
-  healthy clients complete while a slow client is bounded; test timeout versus
-  completion races, EOF, resets, overload, and resource release. Keep the existing
-  development-only label until the remaining operational requirements are met.
 - Complete handler, write, and shutdown deadline semantics and graceful stop.
+  Qualify a transport abort/close path and listener-error cleanup before promising
+  reclamation; the current runtime still has relevant lifecycle limitations.
   State what can actually be cancelled, prevent abandoned work from publishing
   effects where promised, and test slow readers, throwing/hanging handlers,
   in-flight shutdown, and repeated start/stop with owned-process diagnostics.

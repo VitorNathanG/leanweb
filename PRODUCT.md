@@ -42,9 +42,13 @@ The current foundation must continue to satisfy all of these:
 
 ## Operational Server Gate
 
-Not met. The current sequential server is development-only: it has no deadlines,
-concurrency control, graceful-stop API, or TLS. One slow peer can block later work.
-Do not advertise it as production-ready or expose it directly to untrusted networks.
+Not met. The current development server has bounded concurrent connection workers,
+accept-loop backpressure, and an absolute request-read deadline. Healthy clients
+can progress alongside slow readers while capacity is available. It still has no
+handler/write deadlines, graceful-stop API, or TLS; hanging handlers and stalled
+writes can exhaust capacity. Do not advertise it as production-ready or expose it
+directly to untrusted networks. The [README](README.md#http-subset) owns configuration
+defaults and exact admission/deadline semantics.
 
 Before changing that status, deliver a working, bounded server path with documented
 ownership and cleanup. Qualify concurrent healthy requests alongside slow peers,

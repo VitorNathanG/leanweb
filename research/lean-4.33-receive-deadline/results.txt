@@ -1,0 +1,77 @@
+Receive-deadline qualification; normalized executed results
+Date: 2026-09-07
+Lean: 4.33.1 Release, x86_64-unknown-linux-gnu
+Lean commit: 819816b2e0a3bf405af45ae5c7af2491d8f5bee6
+Compiler: clang 22.1.4, llvm-project 35990504507d79e0b9deb809c8ee5e1b34ceef20
+Compiler target: x86_64-unknown-linux-gnu; thread model: posix
+OS: Linux 7.0.0-30-generic x86_64
+libc: glibc 2.39
+Node: v25.6.1; platform linux; arch x64
+libuv version: not independently measured
+Sanitizers: none enabled
+Compile command cwd: assignment/.work
+lean --root=.. -DwarningAsError=true -o Probe.olean -c Probe.c ../Probe.lean
+leanc -O2 -o probe Probe.c
+Compile budgets: 120000 ms per command
+Compile elapsed_ms: lean=454 leanc=585
+Compile outcomes: both exit=0; no timeout
+Run command cwd: assignment/.work
+./probe
+Execution budget: 40000 ms per process
+Repetitions: 3 fresh executable processes
+Per repetition: 100 iterations per category; 500 test connections plus 1 warmup
+Sockets: owned IPv4 loopback, bind port 0, listener backlog 4, one pair at a time
+Request receive cap: 8 bytes; sender payload: one byte x
+Direct cancellation delays: 1 ms pending check; race sender 0/1/2 ms, canceller 1/2/0 ms
+Selection timer delays: silent=2 ms, fast-read=1000 ms, race=1 ms
+Lifecycle timers: cancelled=1000 ms; fired=1 ms
+
+run=1 process_elapsed_ms=1563 probe_elapsed_ms=1558 exit=0 signal=none timeout=false stderr=empty
+pending iterations=100 outer_none=100 repeated_cancel_calls=300
+completion_race iterations=100 data=66 outer_none=34
+timer_lifecycle iterations=100 cancelled_promises=200 fired=100 finished_result_preserved=100
+selection mode=0 iterations=100 read_wins=0 timer_wins=100 read_outer_none=100 timer_outer_none=0
+selection mode=1 iterations=100 read_wins=100 timer_wins=0 read_outer_none=0 timer_outer_none=100
+selection mode=2 iterations=100 read_wins=34 timer_wins=66 read_outer_none=66 timer_outer_none=33
+
+run=2 process_elapsed_ms=1524 probe_elapsed_ms=1520 exit=0 signal=none timeout=false stderr=empty
+pending iterations=100 outer_none=100 repeated_cancel_calls=300
+completion_race iterations=100 data=66 outer_none=34
+timer_lifecycle iterations=100 cancelled_promises=200 fired=100 finished_result_preserved=100
+selection mode=0 iterations=100 read_wins=0 timer_wins=100 read_outer_none=100 timer_outer_none=0
+selection mode=1 iterations=100 read_wins=100 timer_wins=0 read_outer_none=0 timer_outer_none=100
+selection mode=2 iterations=100 read_wins=35 timer_wins=65 read_outer_none=64 timer_outer_none=33
+
+run=3 process_elapsed_ms=1587 probe_elapsed_ms=1582 exit=0 signal=none timeout=false stderr=empty
+pending iterations=100 outer_none=100 repeated_cancel_calls=300
+completion_race iterations=100 data=62 outer_none=38
+timer_lifecycle iterations=100 cancelled_promises=200 fired=100 finished_result_preserved=100
+selection mode=0 iterations=100 read_wins=0 timer_wins=100 read_outer_none=100 timer_outer_none=0
+selection mode=1 iterations=100 read_wins=100 timer_wins=0 read_outer_none=0 timer_outer_none=100
+selection mode=2 iterations=100 read_wins=35 timer_wins=65 read_outer_none=65 timer_outer_none=30
+
+Diagnostics:
+Initial harness invocation omitted --root=..; Lean rejected the input outside cwd root.
+Initial compile exit=1 elapsed_ms=27; no executable run. Corrected invocation above succeeded.
+Owned-child /proc FD sampling: EACCES at all seven checkpoints in each run (21 failed samples).
+No FD counts obtained; no workaround attempted; no leak-free claim.
+No runtime assertion failure, unexpected EOF, IO error, crash, or process timeout in successful runs.
+No Socket.shutdown, Timer.stop, lake invocation, or production build invoked by this assignment.
+
+Root integration qualification (separate from the isolated probe above):
+Commands run from repository root with pinned toolchain externally selected:
+lake build: final pass, 33 jobs, elapsed=1.23 s (incremental; not a cold-build benchmark)
+lake exe leanweb_tests: final pass, elapsed=0.13 s
+node --test tests/http.test.mjs: final pass, 22 reported tests, elapsed=10.60 s
+TCP repetitions during integration: 4 full 22-test passes, elapsed=10.60,10.62,10.61,10.60 s
+Earlier passes preceded test synchronization and final deadline-gate extraction.
+TCP process budgets: 40 s per invocation; 30 s per top-level test
+Fixture configuration: maxConnections=2, requestTimeoutMs=200, IPv4 loopback ephemeral port
+Stalled-write fixture: two paused readers, 16 MiB response each, disconnected after 300 ms check
+Each full pass: self-FD baseline=15; all three recovery batches returned to 15
+These are finite, quiescent descriptor samples, not heap/thread or hard resource bounds.
+Deterministic deadline-gate mutation: moving the clock check into only the success branch
+caused leanweb_tests to fail at expired parsed requests and rejections cannot select a response.
+Mutation check elapsed=1.33 s; intended failing variant restored before final build/tests.
+Selected #print axioms audit passed; standard transitive changes documented in Architecture.
+Workflow checker passed (16 Markdown files); staged and unstaged whitespace checks passed.

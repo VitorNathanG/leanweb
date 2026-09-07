@@ -4,7 +4,9 @@ import LeanWeb.Example
 def main (args : List String) : IO UInt32 := do
   let port ← match args with
     | [] => pure 8080
-    | [value] =>
+    | [value] => do
+      if !value.toList.all (fun c => '0' <= c && c <= '9') then
+        throw (IO.userError "Usage: leanweb [port]")
       match value.toNat? with
       | some port =>
         if 0 < port && port <= 65535 then pure port

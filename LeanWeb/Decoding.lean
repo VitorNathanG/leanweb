@@ -29,7 +29,9 @@ def nat (source : Request → Except DecodeError String) (field : String)
     match source request with
     | .error error => .error error
     | .ok text =>
-      if text.length > maxDigits then .error (.invalid field)
+      -- Keep the wire syntax explicit: upstream toNat? also accepts digit separators.
+      if text.length > maxDigits || text.isEmpty ||
+          !text.toList.all (fun c => '0' <= c && c <= '9') then .error (.invalid field)
       else match text.toNat? with
         | some value => .ok value
         | none => .error (.invalid field)

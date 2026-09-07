@@ -39,14 +39,14 @@ def main : IO Unit := do
       { method := .post, path := "/health" : Request },
       { method := .get, path := "/health/" : Request }] do
     check ((← handle request).status == .notFound) "exact method/path matching"
-  let oversized := String.mk (List.replicate 65537 'a')
+  let oversized := String.ofList (List.replicate 65537 'a')
   let response ← handle { method := .get, path := "/", body := oversized }
   check (response.status == .payloadTooLarge) "application body limit"
   check ((← calls.get) == 1) "denied requests do not execute injected effects"
-  let boundary := String.mk (List.replicate 65536 'a')
+  let boundary := String.ofList (List.replicate 65536 'a')
   let response ← handle { method := .post, path := "/echo", body := boundary }
   check (response.body == boundary && response.status == .ok) "inclusive body limit"
-  let multibyte := String.mk (List.replicate 32768 (Char.ofNat 0x3bb))
+  let multibyte := String.ofList (List.replicate 32768 (Char.ofNat 0x3bb))
   let response ← handle { method := .post, path := "/echo", body := multibyte }
   check (response.body == multibyte && response.status == .ok) "multibyte body at byte limit"
   let response ← handle { method := .post, path := "/echo", body := multibyte ++ "a" }
@@ -61,4 +61,24 @@ def main : IO Unit := do
   let response ← Middleware.compose (mark "outer:") (mark "inner:")
     (fun _ => pure (.text "handler")) { method := .get, path := "/" }
   check (response.body == "outer:inner:handler") "middleware composition order"
+  let invoked ← IO.mkRef false
+  let handler : Request → IO Response := fun _ => do
+    invoked.set true
+    return .text "handled"
+  let rejected := Response.text "Incomplete request\n" .badRequest
+  for parsed in [.error rejected, .ok { method := .get, path := "/" }] do
+    let expired ← (Server.responseBeforeDeadline handler parsed 0).toBaseIO
+    check (!expired.toBool) "expired parsed requests and rejections cannot select a response"
+  check (!(← invoked.get)) "expired request cannot invoke handler"
+  let accepted ← Server.responseBeforeDeadline handler (.error rejected) ((← IO.monoMsNow) + 1000)
+  check (accepted == rejected) "ordinary pre-deadline rejection is preserved"
+  for config in [
+      { maxConnections := 0 : Server.Config },
+      { requestTimeoutMs := 0 : Server.Config },
+      { maxRequestBytes := 0 : Server.Config },
+      { backlog := 0 : Server.Config },
+      { backlog := 2147483648 : Server.Config },
+      { host := "not-an-address" : Server.Config }] do
+    let result ← (Server.serve exploding config).toBaseIO
+    check (!result.toBool) "invalid server configuration fails before listening"
   IO.println "Core and application tests passed"
