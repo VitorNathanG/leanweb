@@ -102,7 +102,7 @@ local repositories, machine-specific toolchain locations, or user-global setting
 4. Add or update proofs, executable tests, and boundary tests for the actual claim.
 5. Run focused checks, then the applicable full verification in Development.
 6. Review the diff and proof boundary; update authoritative docs and remove
-   completed roadmap work. Reflect before committing or reporting completion.
+   completed roadmap work. Reflect, then commit before reporting completion.
 
 Keep production code in Lean and the existing Node test harness dependency-free
 unless a concrete requirement justifies a change. Manual edits use `apply_patch`.
@@ -123,8 +123,12 @@ Avoid unrelated refactors and new abstraction layers without a use case.
 
 ## Commits And Reporting
 
-- Commit only when explicitly authorized. A request to commit one task is not
-  standing authorization for future commits. Only the root agent commits.
+- Always commit completed, verified work before reporting completion, unless the
+  user explicitly asks not to commit. This is standing authorization for those
+  commits; do not wait for a separate commit request. Only the root agent commits.
+- Keep commits scoped to the completed task. Do not include unrelated pending
+  changes or create empty commits for read-only work. If verification or a commit
+  is blocked, report the blocker rather than claiming completion.
 - Inspect `git status`, unstaged and staged diffs, and recent history first.
   Stage only intended files, inspect new files for secrets and generated output,
   and run both unstaged and staged whitespace checks.
