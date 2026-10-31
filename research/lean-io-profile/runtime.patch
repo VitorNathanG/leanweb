@@ -1,0 +1,121 @@
+--- a/src/runtime/object.cpp
++++ b/src/runtime/object.cpp
+@@ -13,6 +13,7 @@
+ #include <lean/lean.h>
+ #include "runtime/object.h"
+ #include "runtime/thread.h"
++#include "runtime/profile.hpp"
+ #include "runtime/utf8.h"
+ #include "runtime/alloc.h"
+ #include "runtime/debug.h"
+@@ -925,6 +926,7 @@
+     }
+
+     void resolve_core(unique_lock<mutex> & lock, lean_task_object * t, object * v) {
++        lean_io_profile::scope measurement(lean_io_profile::metric::task_resolve, false);
+         mark_mt(v);
+         t->m_value = v;
+         lean_task_imp * imp = t->m_imp.exchange(nullptr, std::memory_order_relaxed);
+@@ -1023,6 +1025,7 @@
+     }
+
+     void wait_for(lean_task_object * t) {
++        lean_io_profile::scope measurement(lean_io_profile::metric::task_wait);
+         if (t->m_value)
+             return;
+         unique_lock<mutex> lock(m_mutex);
+@@ -1047,6 +1050,7 @@
+     }
+
+     object * wait_any(object * task_list) {
++        lean_io_profile::scope measurement(lean_io_profile::metric::task_wait_any);
+         if (object * t = wait_any_check(task_list))
+             return t;
+         unique_lock<mutex> lock(m_mutex);
+--- a/src/runtime/thread.cpp
++++ b/src/runtime/thread.cpp
+@@ -19,6 +19,7 @@
+ #include "runtime/exception.h"
+ #include "runtime/alloc.h"
+ #include "runtime/stack_overflow.h"
++#include "runtime/profile.hpp"
+
+ #ifndef LEAN_DEFAULT_THREAD_STACK_SIZE
+ #ifdef LEAN_EMSCRIPTEN
+@@ -55,6 +56,7 @@
+ }
+
+ extern "C" LEAN_EXPORT void lean_finalize_thread() {
++    lean_io_profile::scope measurement(lean_io_profile::metric::thread_finalize);
+     run_thread_finalizers();
+     run_post_thread_finalizers();
+ }
+@@ -125,12 +127,14 @@
+     bool                      m_joined = false;
+
+     static void * _main(void * p) {
++        lean_io_profile::scope measurement(lean_io_profile::metric::thread_entry);
+         stack_guard guard;
+         thread_main(p);
+         return nullptr;
+     }
+
+     imp(runnable const & p) {
++        lean_io_profile::scope measurement(lean_io_profile::metric::thread_create);
+         pthread_attr_init(&m_attr);
+         if (pthread_attr_setstacksize(&m_attr, m_thread_stack_size)) {
+             throw exception("failed to set thread stack size");
+--- a/src/runtime/stack_overflow.cpp
++++ b/src/runtime/stack_overflow.cpp
+@@ -20,6 +20,7 @@
+ #include <lean/lean.h>
+ #include <initializer_list>
+ #include "runtime/stack_overflow.h"
++#include "runtime/profile.hpp"
+
+ namespace lean {
+ // stack guard of the main thread
+@@ -83,6 +84,7 @@
+ }
+
+ stack_guard::stack_guard() {
++    lean_io_profile::scope measurement(lean_io_profile::metric::stack_setup);
+     m_signal_stack.ss_sp = malloc(SIGSTKSZ);
+     if (m_signal_stack.ss_sp == nullptr) return;
+     m_signal_stack.ss_size = SIGSTKSZ;
+@@ -91,6 +93,7 @@
+ }
+
+ stack_guard::~stack_guard() {
++    lean_io_profile::scope measurement(lean_io_profile::metric::stack_teardown);
+     if (!m_signal_stack.ss_sp) return;
+     m_signal_stack.ss_flags = SS_DISABLE;
+     sigaltstack(&m_signal_stack, nullptr);
+--- a/src/runtime/uv/event_loop.cpp
++++ b/src/runtime/uv/event_loop.cpp
+@@ -5,6 +5,7 @@
+ Author: Sofia Rodrigues, Henrik Böving
+ */
+ #include "runtime/uv/event_loop.h"
++#include "runtime/profile.hpp"
+
+
+ /*
+@@ -65,7 +66,9 @@
+
+ // Locks the event loop for the side of the requesters.
+ void event_loop_lock(event_loop_t * event_loop) {
++    lean_io_profile::scope measurement(lean_io_profile::metric::loop_acquire_fast, false);
+     if (uv_mutex_trylock(&event_loop->mutex) != 0) {
++        measurement.classify(lean_io_profile::metric::loop_acquire_contended);
+         event_loop->n_waiters++;
+         event_loop_interrupt(event_loop);
+         uv_mutex_lock(&event_loop->mutex);
+@@ -84,6 +87,7 @@
+ // Runs the loop and stops when it needs to register new requests.
+ void event_loop_run_loop(event_loop_t * event_loop) {
+     while (uv_loop_alive(event_loop->loop)) {
++        lean_io_profile::scope measurement(lean_io_profile::metric::loop_iteration);
+         uv_mutex_lock(&event_loop->mutex);
+
+         while (event_loop->n_waiters != 0) {

@@ -1,0 +1,32 @@
+{
+  "baseline": {
+    "inputs": {
+      "object.cpp": "e03ea4317ad44fb91a4cc9097abe1601b1e1cf8fb77f5ab7b0620fdfcf348430",
+      "thread.cpp": "64c2d8cf7488e0054848a2599e61eaa6deb97007859feea3b43f55f3561d8173",
+      "stack_overflow.cpp": "bd5d6893b64a1ab452299e4010a5f1607a6b298a5bb9c4138b372315f137eb63",
+      "uv/event_loop.cpp": "547099ee43b79b36c06d8f185baf899fc6346bb6e00bb1b695e8d6901c994302",
+      "profile.hpp": "b9ffaa33cbbd1644dbaf8b4333ed52ec216e6411ba6f98b858e03cebe478ff7e"
+    },
+    "changed": [
+      "thread.cpp.o",
+      "object.cpp.o",
+      "stack_overflow.cpp.o",
+      "event_loop.cpp.o"
+    ]
+  },
+  "profile": {
+    "inputs": {
+      "object.cpp": "8f793eac769c970d6b7c000605585aa057ac20b9116f8495f388d9bfa9f08954",
+      "thread.cpp": "66a45ba4bb6f46f1871323a2a62eb4943278970115e884accd94b3b7132973b3",
+      "stack_overflow.cpp": "504522bda71a1db8a0253f4457562d266dcdf73f3a0f4d570b012ddb8ee738e9",
+      "uv/event_loop.cpp": "d53e1bc3e8ad5d309bd2742143e4e9f18e3093ec644b0511b97ec865ebf44665",
+      "profile.hpp": "b9ffaa33cbbd1644dbaf8b4333ed52ec216e6411ba6f98b858e03cebe478ff7e"
+    },
+    "changed": [
+      "thread.cpp.o",
+      "object.cpp.o",
+      "stack_overflow.cpp.o",
+      "event_loop.cpp.o"
+    ]
+  }
+}

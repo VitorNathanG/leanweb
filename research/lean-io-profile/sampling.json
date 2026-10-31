@@ -1,0 +1,170 @@
+[
+  {
+    "repetition": 1,
+    "samples": 2468,
+    "sampledThreads": 2,
+    "kernelSamples": 1973,
+    "topSymbols": [
+      [
+        "unresolved kernel",
+        1973
+      ],
+      [
+        "[unknown]",
+        121
+      ],
+      [
+        "pthread_create",
+        38
+      ],
+      [
+        "read",
+        30
+      ],
+      [
+        "syscall",
+        24
+      ],
+      [
+        "pthread_cond_broadcast",
+        24
+      ],
+      [
+        "accept4",
+        16
+      ],
+      [
+        "lean_dec_ref_cold",
+        15
+      ],
+      [
+        "__kernel_clock_gettime",
+        14
+      ],
+      [
+        "epoll_pwait",
+        12
+      ],
+      [
+        "pthread_mutex_lock",
+        10
+      ],
+      [
+        "lean_mark_mt",
+        10
+      ]
+    ]
+  },
+  {
+    "repetition": 2,
+    "samples": 2470,
+    "sampledThreads": 2,
+    "kernelSamples": 1972,
+    "topSymbols": [
+      [
+        "unresolved kernel",
+        1972
+      ],
+      [
+        "[unknown]",
+        126
+      ],
+      [
+        "read",
+        36
+      ],
+      [
+        "pthread_cond_broadcast",
+        32
+      ],
+      [
+        "pthread_create",
+        26
+      ],
+      [
+        "syscall",
+        16
+      ],
+      [
+        "pthread_mutex_lock",
+        12
+      ],
+      [
+        "accept4",
+        11
+      ],
+      [
+        "lean_mark_mt",
+        10
+      ],
+      [
+        "uv__io_poll",
+        10
+      ],
+      [
+        "lean_dec_ref_cold",
+        9
+      ],
+      [
+        "mi_free_block_delayed_mt",
+        9
+      ]
+    ]
+  },
+  {
+    "repetition": 3,
+    "samples": 2481,
+    "sampledThreads": 2,
+    "kernelSamples": 1949,
+    "topSymbols": [
+      [
+        "unresolved kernel",
+        1949
+      ],
+      [
+        "[unknown]",
+        126
+      ],
+      [
+        "pthread_create",
+        37
+      ],
+      [
+        "pthread_cond_broadcast",
+        31
+      ],
+      [
+        "read",
+        28
+      ],
+      [
+        "syscall",
+        24
+      ],
+      [
+        "accept4",
+        12
+      ],
+      [
+        "__kernel_clock_gettime",
+        12
+      ],
+      [
+        "epoll_pwait",
+        11
+      ],
+      [
+        "lean_dec_ref_cold",
+        9
+      ],
+      [
+        "pthread_mutex_lock",
+        9
+      ],
+      [
+        "uv_run",
+        9
+      ]
+    ]
+  }
+]
