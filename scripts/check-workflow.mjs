@@ -74,6 +74,10 @@ for (const file of files) {
 }
 
 const roadmap = await readFile(path.join(root, 'ROADMAP.md'), 'utf8');
-assert.doesNotMatch(roadmap, /^\s*(?:\d+\.\s|[-*] \[[ xX]\])/m,
-  'ROADMAP.md must use an unnumbered future-only list, not numbered/checklist status entries');
+for (const line of roadmap.split(/\r?\n/)) {
+  if (/^\s*(?:[-*+]|\d+[.)])\s/.test(line)) {
+    assert.match(line, /^\s*- \[ \] \S/,
+      'ROADMAP.md must use unchecked "- [ ]" items; remove completed work');
+  }
+}
 console.log(`Workflow checks passed (${files.length} Markdown files)`);

@@ -1,45 +1,72 @@
 # Roadmap
 
-Future work, ordered within each track. Tracks can progress independently where
-their dependencies permit. Acceptance gates belong in [PRODUCT.md](PRODUCT.md);
-layer boundaries and current decisions belong in
-[Architecture](docs/architecture.md). Supporting research should enable the next
-working behavior, not postpone it indefinitely.
+Future work, ordered within each track. Remove completed items rather than
+checking them off. Tracks can progress independently where their dependencies
+permit. Acceptance gates belong in [PRODUCT.md](PRODUCT.md); layer boundaries
+and current decisions belong in [Architecture](docs/architecture.md).
+
+Verify the current HTTP subset before expanding it. Proofs must concern the
+executable definitions; TCP, runtime, and resource-lifecycle evidence remain
+separate. Supporting research should enable the next working behavior, not
+postpone it indefinitely.
 
 ## HTTP Implementation
 
-- Complete handler, write, and shutdown deadline semantics and graceful stop.
+- [ ] Specify the supported HTTP/1.1 byte grammar independently of the parser.
+  Define accepted syntax, framing, UTF-8 rules, limits, and deliberate rejections
+  against RFC 9110 and RFC 9112. Distinguish this subset from full HTTP conformance.
+- [ ] Prove parser soundness against that specification and acceptance of valid
+  supported requests. Relate decoded fields to their source bytes and retain
+  positive and negative regressions so rejection of every request cannot pass.
+- [ ] Prove unambiguous request framing. Establish the exact body boundary and
+  preserve missing-versus-zero Content-Length semantics. Cover repeated lengths,
+  Content-Length/Transfer-Encoding conflicts, and already-buffered trailing data
+  with proofs and direct-parser/TCP regressions.
+- [ ] Prove chunk-boundary independence for one supported request, excluding
+  deadlines and data arriving after completion. Exercise splits inside CRLF,
+  header values, and UTF-8 sequences, plus EOF at incomplete prefixes.
+- [ ] Prove successful parsing respects the configured aggregate byte limit and
+  parser byte accesses stay in bounds. Cover empty, exact-limit, oversized, and
+  long numeric inputs; distinguish byte bounds from time or memory guarantees.
+- [ ] Prove response framing and header separation. Content-Length must equal
+  the encoded body's byte count; HEAD must retain that length without sending
+  the body. Prove body text cannot alter the header block and test CRLF payloads.
+- [ ] Make request-dispatch transition rules explicit and connect their proofs
+  to the server's executable decisions. Incomplete, rejected, and expired
+  requests must not dispatch; an accepted request must select at most one handler.
+  Exercise the IO adapter over TCP without treating a state proof as socket-lifetime proof.
+- [ ] Complete handler, write, and shutdown deadline semantics and graceful stop.
   Qualify a transport abort/close path and listener-error cleanup before promising
   reclamation; the current runtime still has relevant lifecycle limitations.
   State what can actually be cancelled, prevent abandoned work from publishing
   effects where promised, and test slow readers, throwing/hanging handlers,
   in-flight shutdown, and repeated start/stop with owned-process diagnostics.
-- Add structured connection and request diagnostics without exposing secrets or
+- [ ] Add structured connection and request diagnostics without exposing secrets or
   request bodies by default. Exercise sanitized 500 responses, listener failures,
   connection-error recovery, and bounded diagnostic output through the server.
-- Qualify deployment transport security and operational behavior: TLS termination
+- [ ] Qualify deployment transport security and operational behavior: TLS termination
   requirements, proxy assumptions, sustained resource pressure, overload, and
   cancellation/fault tests. Define a supported deployment profile before changing
   the product's development-only status.
 
 ## Framework
 
-- Add typed path parameters through a runnable endpoint. Specify matching and
+- [ ] Add typed path parameters through a runnable endpoint. Specify matching and
   ambiguity rules, percent-decoding policy, source relations, and error behavior;
   preserve or replace exact-route uniqueness with an explicit proved contract and
   cover conflicting registrations and rejected targets in kernel and TCP tests.
-- Add bounded JSON body schemas and media-type handling. Define duplicate and
+- [ ] Add bounded JSON body schemas and media-type handling. Define duplicate and
   unknown-field policy, numeric/text limits, and error responses; prove successful
   decoding establishes domain preconditions and test malformed and valid bodies
   through a real controller. Do not present a JSON library call as a conformance proof.
 
 ## Application
 
-- Deliver one stateful service with an explicit invariant and pure transition
+- [ ] Deliver one stateful service with an explicit invariant and pure transition
   model. Prove preservation and authorization conditions, connect that model to
   the injected service, and test concurrency/failure behavior without extending
   the theorem's claim to unverified IO storage.
-- Establish reproducible workload benchmarks with stated functionality, proof
+- [ ] Establish reproducible workload benchmarks with stated functionality, proof
   boundary, concurrency, payloads, and host/toolchain identities. Measure latency,
   throughput, and resource use; optimize measured bottlenecks and rerun correctness
   checks rather than using performance work to weaken contracts.
