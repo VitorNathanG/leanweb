@@ -126,6 +126,34 @@ private def accepted (form : RequestForm) : IO Unit := do
 private def invalidForm (form : RequestForm) (label : String) : IO Unit :=
   check (!(form.valid 512)) label
 
+private def checkChunks (form : RequestForm) (chunks : List ByteArray) (limit : Nat) : IO Unit := do
+  let mut buffered := ByteArray.empty
+  for chunk in ByteArray.empty :: chunks do
+    buffered := buffered ++ chunk
+    match Wire.parse buffered limit with
+    | .ok none => check (buffered.size < form.bytes.size) "complete bytes must not wait"
+    | .ok (some request) =>
+      check (buffered == form.bytes && sameRequest request form.request) "chunked request fields"
+    | .error error => throw (IO.userError s!"Valid prefix rejected: {repr error}")
+  check (buffered == form.bytes) "all chunks consumed"
+
+private def incremental (form : RequestForm) : IO Unit := do
+  let bytes := form.bytes
+  check (form.valid bytes.size) "valid incremental fixture"
+  for limit in [bytes.size, bytes.size + 32] do
+    for cut in [:bytes.size + 1] do
+      checkChunks form [bytes.extract 0 cut, ByteArray.empty,
+        bytes.extract cut bytes.size, ByteArray.empty] limit
+    checkChunks form ((List.range bytes.size).map (fun i => bytes.extract i (i + 1))) limit
+  for suffix in ["x".toUTF8, "\r\n".toUTF8, bytes, ByteArray.mk #[255]] do
+    let appended := bytes ++ suffix
+    match Wire.parse appended appended.size with
+    | .error error => check (error == Rejection.trailing.response) "buffered trailing bytes"
+    | _ => throw (IO.userError "Buffered suffix was not rejected")
+    match Wire.parse appended bytes.size with
+    | .error error => check (error == Rejection.tooLarge.response) "overflow before trailing bytes"
+    | _ => throw (IO.userError "Oversized suffix was not rejected")
+
 def run : IO Unit := do
   for (text, limit, expected) in [
       ("0", 0, Except.ok 0),
@@ -162,6 +190,12 @@ def run : IO Unit := do
   verify encodingBeforeSyntax
   let base : RequestForm := {
     method := .get, target := .origin "/" none, fields := [{ name := "Host", value := "a" }] }
+  incremental base
+  incremental { base with fields := base.fields ++ [{ name := "Content-Length", value := "000" }] }
+  incremental unicodeForm
+  let framedBody := "\r\n\r\nGET / HTTP/1.1\r\nHost: body\r\n\r\n\x00"
+  incremental { base with method := .post, body := framedBody, fields := base.fields ++ [
+    { name := "Content-Length", value := toString framedBody.toUTF8.size }] }
   for method in [Method.get, .head, .post, .put, .patch, .delete, .options] do
     accepted { base with method }
   accepted unicodeForm
@@ -208,9 +242,13 @@ def run : IO Unit := do
       ("GET / HTTP/1.1\r\nHost:", .host),
       ("GET / HTTP/1.1\r\nHost: a\r\nHost:", .duplicateHost),
       ("GET / HTTP/1.1\r\nContent-Length: 0\r\nContent-Length: bad", .duplicateLength),
+      ("GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 2\r\nContent-Length: 2", .duplicateLength),
+      ("GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\nContent-Length: 00", .duplicateLength),
       ("GET / HTTP/1.1\r\nContent-Length: 999999999999999999x", .length),
       ("GET / HTTP/1.1\r\nContent-Length: 999999999999999999", .tooLarge),
       ("GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: bad", .transferEncoding),
+      ("GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 2\r\nTransfer-Encoding: chunked", .transferEncoding),
+      ("GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\nContent-Length: 2", .transferEncoding),
       ("GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nNo-Colon", .transferEncoding),
       ("GET / HTTP/1.1\r\nNo-Colon\r\nTransfer-Encoding: chunked", .fieldName),
       ("GET / HTTP/1.1\r\nContent-Length: bad\r\nTransfer-Encoding: chunked", .length),

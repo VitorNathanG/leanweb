@@ -119,6 +119,30 @@ test('LeanWeb over real TCP', { timeout: 30000 }, async t => {
     assert.equal(result.body, body);
   });
 
+  await t.test('CRLF, header UTF-8, and body UTF-8 splits preserve the request', async () => {
+    const body = '\u00e9\ud83d\ude80\r\n\r\n\u0000';
+    const bytes = request('POST', '/echo', body, 'X-Test: \u03bb\r\n');
+    const end = bytes.indexOf('\r\n\r\n') + 4;
+    const headerUTF8 = bytes.indexOf(Buffer.from('\u03bb'));
+    const bodyUTF8 = bytes.indexOf(Buffer.from('\ud83d\ude80'));
+    for (const cut of [bytes.indexOf('\r\n') + 1, headerUTF8 + 1,
+      end - 3, end - 2, end - 1, end, bodyUTF8 + 1, bodyUTF8 + 2, bodyUTF8 + 3]) {
+      const result = response(await exchange(port,
+        [bytes.subarray(0, cut), bytes.subarray(cut)], { fragmentDelay: 2 }));
+      assert.equal(result.status, 200, `split at ${cut}`);
+      assert.equal(result.body, body);
+    }
+  });
+
+  await t.test('missing and zero lengths finish at the header boundary', async () => {
+    for (const length of ['', 'Content-Length: 000\r\n']) {
+      const bytes = Buffer.from(`GET /health HTTP/1.1\r\nHost: a\r\n${length}\r\n`);
+      const result = response(await exchange(port,
+        [bytes.subarray(0, -1), bytes.subarray(-1)], { fragmentDelay: 2 }));
+      assert.equal(result.status, 200);
+    }
+  });
+
   await t.test('HEAD retains length but omits body', async () => {
     const result = response(await exchange(port, [request('HEAD', '/health')]), { head: true });
     assert.equal(result.status, 200);
@@ -172,6 +196,8 @@ test('LeanWeb over real TCP', { timeout: 30000 }, async t => {
       'GET / HTTP/1.1\nHost: a\n\n',
       'GET / HTTP/1.1\r\nHost: a\r\nHost: b\r\n\r\n',
       'POST /echo HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\nContent-Length: 1\r\n\r\n',
+      'POST /echo HTTP/1.1\r\nHost: a\r\nContent-Length: 2\r\nContent-Length: 2\r\n\r\n',
+      'POST /echo HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\nContent-Length: 00\r\n\r\n',
       'POST /echo HTTP/1.1\r\nHost: a\r\nContent-Length: -1\r\n\r\n',
       'GET /#fragment HTTP/1.1\r\nHost: a\r\n\r\n',
     ]) {
@@ -180,7 +206,9 @@ test('LeanWeb over real TCP', { timeout: 30000 }, async t => {
   });
 
   await t.test('unsupported features fail without waiting for a body', async () => {
-    for (const header of ['Transfer-Encoding: chunked', 'Expect: 100-continue']) {
+    for (const header of ['Transfer-Encoding: chunked', 'Expect: 100-continue',
+      'Content-Length: 2\r\nTransfer-Encoding: chunked',
+      'Transfer-Encoding: chunked\r\nContent-Length: 2']) {
       const input = `POST /echo HTTP/1.1\r\nHost: a\r\n${header}\r\n\r\n`;
       assert.equal(response(await exchange(port, [input])).status, 501);
     }
@@ -196,6 +224,33 @@ test('LeanWeb over real TCP', { timeout: 30000 }, async t => {
       Buffer.from([255]),
     ]);
     assert.equal(response(await exchange(port, [invalid])).status, 400);
+  });
+
+  await t.test('EOF at incomplete header and body prefixes is not completion', async () => {
+    const bytes = request('POST', '/echo', '\u00e9\ud83d\ude80', 'X-Test: \u03bb\r\n');
+    const end = bytes.indexOf('\r\n\r\n') + 4;
+    for (const cut of [0, bytes.indexOf('\r\n') + 1,
+      bytes.indexOf(Buffer.from('\u03bb')) + 1, end - 1, end, bytes.length - 1]) {
+      const result = response(await exchange(port, [bytes.subarray(0, cut)], { endInput: true }));
+      assert.equal(result.status, 400, `EOF at ${cut}`);
+      assert.equal(result.body, 'Incomplete request\n');
+    }
+  });
+
+  await t.test('trailing bytes respect the one-request connection boundary', async () => {
+    for (const [bytes, body] of [
+      [Buffer.from('GET /health HTTP/1.1\r\nHost: a\r\n\r\n'), '{"status":"ok"}'],
+      [request('GET', '/health'), '{"status":"ok"}'],
+      [request('POST', '/echo', '\u00e9'), '\u00e9'],
+    ]) {
+      const result = response(await exchange(port, [Buffer.concat([bytes, Buffer.from('x')])]));
+      // A TCP write may split after the complete request, before the trailing byte is read.
+      if (result.status === 400) assert.equal(result.body, 'Trailing bytes after request\n');
+      else {
+        assert.equal(result.status, 200);
+        assert.equal(result.body, body);
+      }
+    }
   });
 
   await t.test('wire and application limits are enforced', async () => {

@@ -146,8 +146,22 @@ Wire.parse bytes limit = .ok (some request) ↔
 ```
 
 This establishes successful acceptance and decoded source fields in both
-directions. General equivalence for rejection and incomplete-input outcomes,
-outcome determinism, and serializer correctness remain unproved.
+directions.
+
+`LeanHttp/Wire/Incremental.lean` additionally proves:
+
+| Theorem | Guarantee for a request accepted at the same limit |
+| --- | --- |
+| `parse_body_boundary` | Exactly the decoded body's UTF-8 bytes follow the scanned header boundary. |
+| `parse_contentLength` | Missing Content-Length means an empty body; otherwise exactly one decimal length equals the body's byte count. |
+| `parse_no_unsupported_fields` | Accepted headers contain neither Transfer-Encoding nor Expect. |
+| `parse_prefix` | Every proper byte prefix returns `ok none`. |
+| `parse_chunks` | Every finite chunk partition, including empty chunks, waits until all request bytes are present and returns the same request. |
+| `parse_append` | Any nonempty buffered suffix is rejected: aggregate overflow takes precedence over trailing bytes. |
+
+These are pure byte-buffer guarantees. They exclude EOF, deadlines, socket
+behavior, and data arriving after completion. General rejection/incomplete-input
+equivalence, outcome determinism, and serializer correctness remain unproved.
 
 ## Incomplete Input And Rejection
 

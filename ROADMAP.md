@@ -12,13 +12,6 @@ postpone it indefinitely.
 
 ## HTTP Implementation
 
-- [ ] Prove unambiguous request framing. Establish the exact body boundary and
-  preserve missing-versus-zero Content-Length semantics. Cover repeated lengths,
-  Content-Length/Transfer-Encoding conflicts, and already-buffered trailing data
-  with proofs and direct-parser/TCP regressions.
-- [ ] Prove chunk-boundary independence for one supported request, excluding
-  deadlines and data arriving after completion. Exercise splits inside CRLF,
-  header values, and UTF-8 sequences, plus EOF at incomplete prefixes.
 - [ ] Prove successful parsing respects the configured aggregate byte limit and
   parser byte accesses stay in bounds. Cover empty, exact-limit, oversized, and
   long numeric inputs; distinguish byte bounds from time or memory guarantees.
