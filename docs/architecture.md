@@ -1,5 +1,25 @@
 # Architecture And Evidence
 
+## Layers
+
+| Library | Responsibility | Dependencies within this package |
+| --- | --- | --- |
+| `LeanHttp` | HTTP types, wire parsing/rendering, and the TCP server | None |
+| `LeanWeb` | Routing, middleware, dependency injection, and decoder/controller contracts | `LeanHttp.Types`, not the wire parser or TCP server |
+| `Example` | Services, endpoints, application policies, and domain proofs | Framework; startup also imports `LeanHttp.Server` |
+
+`Example/Application.lean` builds the application; `Example/Main.lean` connects
+its `Request → IO Response` handler to the HTTP server. The server accepts that
+same callback without requiring the framework. The library entrypoints are
+`LeanHttp.lean`, `LeanWeb.lean`, and `Example.lean`; the framework entrypoint does
+not import the transport or example.
+
+Theorems remain beside the executable definitions they describe. `Tests/Http.lean`,
+`Tests/Framework.lean`, and `Tests/Application.lean` contain each layer's executable
+checks and test-only proof examples. `Tests.lean` runs those suites;
+`Tests/TransportMain.lean` and `Tests/http.test.mjs` exercise the actual TCP boundary.
+The test-only `Tests` library is not imported by the three runtime libraries.
+
 ## Boundaries
 
 ```text
@@ -13,14 +33,14 @@ arbitrary effectful handlers; its type alone does not make those effects verifie
 
 | Boundary | Executable definitions | Evidence | Remaining boundary |
 | --- | --- | --- | --- |
-| HTTP model | `LeanWeb/Http.lean` | Typed status/content-type choices; serializer tests | General JSON validity and HTTP conformance |
+| HTTP model | `LeanHttp/Types.lean` | Typed status/content-type choices; serializer tests | General JSON validity and HTTP conformance |
 | Route selection | `LeanWeb/Router.lean` | `Router.unique`, lookup/dispatch theorems, application tests | Raw URL normalization and future template ambiguity |
 | Policy selection | `LeanWeb/Middleware.lean` | Guard and composition theorems; IO short-circuit tests | Correctness of a supplied policy or rejection action |
 | Input binding | `LeanWeb/Decoding.lean` | `Decoder.sound`, `handle_error`, `handle_ok`; decoder tests | URL specification and unproved source-function semantics |
 | Pure controllers | `LeanWeb/Application.lean`, `LeanWeb/Decoding.lean` | `VerifiedHandler.ensures`, bound controller contract | Arbitrary service effects |
-| Example integration | `LeanWeb/Example.lean` | Body-limit and division proofs; application/TCP tests | General-purpose application security |
-| HTTP wire | `LeanWeb/Wire.lean` | `LeanWeb/WireTests.lean`, `tests/http.test.mjs` | Framing/serializer correctness is tested, not proved |
-| TCP lifetime | `LeanWeb/Server.lean` | Receive/timer probes; concurrent TCP, deadline, backpressure, reset, and FD regressions | Handler/write termination, graceful stop, listener failures, general memory/resource safety |
+| Example integration | `Example/Application.lean` | Body-limit and division proofs; application/TCP tests | General-purpose application security |
+| HTTP wire | `LeanHttp/Wire.lean` | `Tests/Http.lean`, `Tests/http.test.mjs` | Framing/serializer correctness is tested, not proved |
+| TCP lifetime | `LeanHttp/Server.lean` | Receive/timer probes; concurrent TCP, deadline, backpressure, reset, and FD regressions | Handler/write termination, graceful stop, listener failures, general memory/resource safety |
 
 The [API proof table](../README.md#what-is-proved) lists the individual guarantees.
 Keep statements about those guarantees tied to their definitions and hypotheses.

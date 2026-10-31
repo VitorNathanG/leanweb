@@ -1,8 +1,8 @@
-import LeanWeb.Wire
+import LeanHttp.Wire
 import Std.Internal.UV.TCP
 import Std.Internal.UV.Timer
 
-namespace LeanWeb.Server
+namespace LeanHttp.Server
 
 open Std.Internal.UV.TCP
 
@@ -120,4 +120,4 @@ def serve (handler : Request → IO Response) (config : Config := {}) : IO Unit 
   finally
     for worker in workers do discard <| IO.wait worker
 
-end LeanWeb.Server
+end LeanHttp.Server

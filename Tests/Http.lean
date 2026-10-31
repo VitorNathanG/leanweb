@@ -1,9 +1,11 @@
-import LeanWeb.Wire
+import LeanHttp
 
-namespace LeanWeb.WireTests
+open LeanHttp
+
+namespace Tests.Http
 
 private def check (condition : Bool) (label : String) : IO Unit :=
-  unless condition do throw (IO.userError s!"Wire test failed: {label}")
+  unless condition do throw (IO.userError s!"HTTP test failed: {label}")
 
 private def parsed (bytes : ByteArray) (limit : Nat := Wire.defaultMaxRequestBytes) :
     IO Request := do
@@ -17,7 +19,7 @@ private def rejected (bytes : ByteArray) (status : Status := .badRequest)
   | .error response => check (response.status == status) s!"status for {repr bytes.data}"
   | result => throw (IO.userError s!"Expected rejection, got {repr result}")
 
-/-- Pure wire regressions; callable from a test entrypoint without opening sockets. -/
+/-- HTTP regressions; callable from a test entrypoint without opening sockets. -/
 def run : IO Unit := do
   let get := "GET /raw%2Fpath?x=a%20b?c HTTP/1.1\r\nHost: localhost\r\n\r\n"
   let request ← parsed get.toUTF8
@@ -109,5 +111,27 @@ def run : IO Unit := do
     ("HTTP/1.1 201 Created\r\nContent-Type: application/json; charset=utf-8\r\n" ++
      "Content-Length: 2\r\nConnection: close\r\n\r\n{}").toUTF8) "JSON response"
   IO.println "Wire tests passed"
+  let invoked ← IO.mkRef false
+  let handler : Request → IO Response := fun _ => do
+    invoked.set true
+    return .text "handled"
+  let rejected := Response.text "Incomplete request\n" .badRequest
+  for parsed in [.error rejected, .ok { method := .get, path := "/" }] do
+    let expired ← (Server.responseBeforeDeadline handler parsed 0).toBaseIO
+    check (!expired.toBool) "expired parsed requests and rejections cannot select a response"
+  check (!(← invoked.get)) "expired request cannot invoke handler"
+  let accepted ← Server.responseBeforeDeadline handler (.error rejected) ((← IO.monoMsNow) + 1000)
+  check (accepted == rejected) "ordinary pre-deadline rejection is preserved"
+  let exploding : Request → IO Response := fun _ => throw (IO.userError "must not run")
+  for config in [
+      { maxConnections := 0 : Server.Config },
+      { requestTimeoutMs := 0 : Server.Config },
+      { maxRequestBytes := 0 : Server.Config },
+      { backlog := 0 : Server.Config },
+      { backlog := 2147483648 : Server.Config },
+      { host := "not-an-address" : Server.Config }] do
+    let result ← (Server.serve exploding config).toBaseIO
+    check (!result.toBool) "invalid server configuration fails before listening"
+  IO.println "HTTP server tests passed"
 
-end LeanWeb.WireTests
+end Tests.Http

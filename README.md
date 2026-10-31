@@ -36,11 +36,16 @@ reads an unsigned decimal dividend from the body and returns
 than 64 KiB, measured in bytes. The transport separately caps the entire request at 1 MiB.
 Stop the server with Ctrl-C.
 
+The package contains three runtime libraries: `LeanHttp` for HTTP types and transport,
+`LeanWeb` for application-building abstractions, and `Example` for the runnable
+application. Their dependencies and test layout are described in
+[Architecture](docs/architecture.md#layers).
+
 ## Application Model
 
 | Component | Role |
 | --- | --- |
-| `Request`, `Response` | Typed HTTP data; finite status and content-type choices |
+| `LeanHttp.Request`, `LeanHttp.Response` | Typed HTTP data; finite status and content-type choices |
 | `Handler α` | A request-to-result function, independent of an effect system |
 | `Router α` | Exact method/path routes with a proof that keys have no duplicates |
 | `Middleware α` | Handler transformation, composition, and short-circuit policies |
@@ -49,14 +54,14 @@ Stop the server with Ctrl-C.
 | `Controller α pre post` | Pure typed controller that requires a proof of its precondition |
 | `Action Services` | `ReaderT Services IO Response`, explicit dependency injection |
 | `Application Services` | Router, middleware, fallback, and an IO handler adapter |
-| `Wire`, `Server` | Small HTTP/1.1 codec and Lean/libuv TCP transport |
+| `LeanHttp.Wire`, `LeanHttp.Server` | Small HTTP/1.1 codec and Lean/libuv TCP transport |
 
 A controller can carry an application-specific contract:
 
 ```lean
 import LeanWeb
 
-open LeanWeb
+open LeanHttp LeanWeb
 
 def echo : VerifiedHandler (fun request response =>
     response.status = .ok ∧ response.body = request.body) where
@@ -73,7 +78,7 @@ the default `by decide` discharges this during compilation. Registering the same
 method/path twice fails to compile. Different methods on the same path are allowed.
 For computed tables, the caller must supply the freshness proof explicitly.
 
-See [`LeanWeb/Example.lean`](LeanWeb/Example.lean) for the complete application, including
+See [`Example/Application.lean`](Example/Application.lean) for the complete application, including
 effectful dependency injection and a policy proof over the actual application handler.
 Middleware composition is `outer (inner handler)`: requests enter outer first;
 responses return through outer last. HEAD routes are explicit, not inferred from GET.
@@ -175,7 +180,7 @@ OS, compiler, and Lean runtime remain outside the application proofs.
 - Responses compute Content-Length from UTF-8 bytes. HEAD suppresses the body while retaining the length. Application strings cannot become response headers; custom headers are not yet supported.
 - Handler exceptions become 500 responses without exposing exception details. Connection IO errors are isolated from the accept loop.
 
-`Server.Config` defaults to **32 active connections** (`maxConnections`) and a
+`LeanHttp.Server.Config` defaults to **32 active connections** (`maxConnections`) and a
 **5,000 ms total request-read deadline** (`requestTimeoutMs`). Both must be positive.
 The deadline starts when the server accepts a connection and includes all request
 fragments and parsing; incoming bytes do not refresh it. Expiry closes the connection
@@ -203,7 +208,7 @@ production qualification. Internal TCP APIs remain part of the toolchain pin.
 ```sh
 lake build                       # compile executables and kernel-check proofs
 lake exe leanweb_tests           # core, decoders, application, parser, and serializer tests
-node --test tests/http.test.mjs   # real TCP tests; Node.js 22+, no npm packages
+node --test Tests/http.test.mjs   # real TCP tests; Node.js 22+, no npm packages
 node scripts/check-workflow.mjs  # documentation links and workflow structure
 ```
 
@@ -229,9 +234,9 @@ for discovery commands, ownership, and restart requirements.
 
 ## Future Work
 
-[ROADMAP.md](ROADMAP.md) owns future work in execution order. Acceptance gates and
-non-goals belong in [PRODUCT.md](PRODUCT.md); the roadmap is not an implementation
-status dashboard.
+[ROADMAP.md](ROADMAP.md) owns future work in three execution-ordered tracks.
+Acceptance gates and non-goals belong in [PRODUCT.md](PRODUCT.md); the roadmap is
+not an implementation status dashboard.
 
 Reflection, annotations, auto-discovery, ORM integration, transactions, and a DI
 container are intentionally out of scope for this first slice.

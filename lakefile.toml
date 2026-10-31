@@ -1,14 +1,23 @@
 name = "leanweb"
 version = "0.1.0"
-defaultTargets = ["LeanWeb", "leanweb", "leanweb_tests", "leanweb_transport_tests"]
+defaultTargets = ["LeanHttp", "LeanWeb", "Example", "leanweb", "leanweb_tests", "leanweb_transport_tests"]
 moreLeanArgs = ["-DwarningAsError=true"]
+
+[[lean_lib]]
+name = "LeanHttp"
 
 [[lean_lib]]
 name = "LeanWeb"
 
+[[lean_lib]]
+name = "Example"
+
+[[lean_lib]]
+name = "Tests"
+
 [[lean_exe]]
 name = "leanweb"
-root = "Main"
+root = "Example.Main"
 
 [[lean_exe]]
 name = "leanweb_tests"
@@ -16,4 +25,4 @@ root = "Tests"
 
 [[lean_exe]]
 name = "leanweb_transport_tests"
-root = "tests.TransportMain"
+root = "Tests.TransportMain"

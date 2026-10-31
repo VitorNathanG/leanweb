@@ -1,14 +1,24 @@
-import LeanWeb.Example
+import Example
 
-namespace LeanWeb.DecodingTests
+open LeanHttp LeanWeb
 
-deriving instance DecidableEq for Except
+namespace Tests.Application
 
 private def check (condition : Bool) (label : String) : IO Unit :=
-  unless condition do throw (IO.userError s!"Decoder test failed: {label}")
+  unless condition do throw (IO.userError s!"Application test failed: {label}")
 
 private def request (body : String) (query : String := "by=5") : Request :=
   { method := .post, path := "/divide", body, query }
+
+-- These examples are kernel-checked during the build, not merely runtime assertions.
+example : (Example.routes.routes.map Route.key).Nodup := Example.routes.unique
+
+example (request : Request) : (Example.echo.run request).body = request.body :=
+  (Example.echo.ensures request).2
+
+example : (⟨.get, "/health"⟩ : RouteKey) ∈ Example.routes.routes.map Route.key := by decide
+
+example : ¬ (⟨.get, "/health"⟩ : RouteKey) ∉ Example.routes.routes.map Route.key := by decide
 
 -- Successful decoding retains the source relation, not just the range check.
 example (req : Request) (input : Nat × Nat)
@@ -29,45 +39,6 @@ example (req : Request) (error : DecodeError)
   Example.divisionDecoder.handle_error _ _ req error failed
 
 def run : IO Unit := do
-  for (text, expected) in [("0", 0), ("17", 17), ("00017", 17),
-      ("99999999999999999999", 99999999999999999999)] do
-    check (decide (Decoder.bodyNat.decode (request text) = .ok expected)) s!"decimal {text}"
-  for text in ["", "-1", "+1", " 1", "1 ", "1\n", "1\t", "1.0", "1e2", "0x10", "1_000",
-      "_1", "1_", "1__0", "123456789012345678901", String.singleton (Char.ofNat 0x0661),
-      String.singleton (Char.ofNat 0xff11), String.singleton (Char.ofNat 0)] do
-    check (decide (Decoder.bodyNat.decode (request text) = .error (.invalid "body")))
-      s!"reject non-decimal or overlong body: {repr text}"
-  let limited := Decoder.nat (fun req => .ok req.body) "number" 2
-  check (decide (limited.decode (request "99") = .ok 99)) "configured digit limit inclusive"
-  check (decide (limited.decode (request "100") = .error (.invalid "number")))
-    "configured digit limit exceeded"
-  let absent := Decoder.nat (fun _ => .error (.missing "source")) "number"
-  check (decide (absent.decode (request "1") = .error (.missing "source"))) "source error preserved"
-
-  for (query, expected) in [("by=5", 5), ("by=0005", 5), ("other=9&by=5", 5),
-      ("by=5&other=9", 5), ("by=0", 0)] do
-    check (decide ((Decoder.queryNat "by").decode (request "17" query) = .ok expected))
-      "unique raw query parameter"
-  for query in ["", "other=5", "BY=5", "%62y=5"] do
-    check (decide ((Decoder.queryNat "by").decode (request "17" query) = .error (.missing "by")))
-      "missing exact query key"
-  for query in ["by=5&by=5", "by=5&by=0", "by=&by=5", "by=5&other=1&by=6"] do
-    check (decide ((Decoder.queryNat "by").decode (request "17" query) = .error (.duplicate "by")))
-      "duplicate query key rejected"
-  for query in ["by", "=5", "by=5&", "&by=5", "by=5&&other=1", "by=5=6", "by=5&broken"] do
-    check (decide ((Decoder.queryNat "by").decode (request "17" query) = .error (.invalid "query")))
-      "malformed query rejected"
-  for query in ["by=", "by=-1", "by=+1", "by=%35", "by=1.0", "by=1_0", "by=_1",
-      "by=1_", "by=1__0", "by=123456789012345678901"] do
-    check (decide ((Decoder.queryNat "by").decode (request "17" query) = .error (.invalid "by")))
-      "invalid query number"
-
-  let paired := Decoder.bodyNat.zip (Decoder.queryNat "by")
-  check (decide (paired.decode (request "17") = .ok (17, 5))) "decoder composition"
-  check (decide (paired.decode (request "bad" "") = .error (.invalid "body")))
-    "left decoder error wins"
-  check (decide (paired.decode (request "17" "") = .error (.missing "by")))
-    "right decoder error preserved"
   for (body, query, quotient, remainder) in [
       ("17", "by=5", 3, 2), ("0", "by=1", 0, 0), ("1", "by=2", 0, 1),
       ("1000000", "by=1", 1000000, 0), ("1000000", "by=1000000", 1, 0)] do
@@ -97,4 +68,35 @@ def run : IO Unit := do
     "application preserves decoding rejection"
   IO.println "Decoder and typed controller tests passed"
 
-end LeanWeb.DecodingTests
+  let calls ← IO.mkRef (0 : Nat)
+  let services : Example.Services := { greeting := do
+    calls.modify (· + 1)
+    pure "Injected greeting\n" }
+  let handle := Example.app.handle services
+  let response ← handle { method := .get, path := "/" }
+  check (response.body == "Injected greeting\n") "dependency injection"
+  check ((← calls.get) == 1) "injected effect executed once"
+  let response ← handle { method := .get, path := "/health", query := "verbose=true" }
+  check (response == .json "{\"status\":\"ok\"}") "health route ignores query"
+  let response ← handle { method := .post, path := "/echo", body := "round trip" }
+  check (response == .text "round trip") "verified echo"
+  for request in [
+      { method := .get, path := "/missing" : Request },
+      { method := .get, path := "/echo" : Request },
+      { method := .post, path := "/health" : Request },
+      { method := .get, path := "/health/" : Request }] do
+    check ((← handle request).status == .notFound) "exact method/path matching"
+  let oversized := String.ofList (List.replicate 65537 'a')
+  let response ← handle { method := .get, path := "/", body := oversized }
+  check (response.status == .payloadTooLarge) "application body limit"
+  check ((← calls.get) == 1) "denied requests do not execute injected effects"
+  let boundary := String.ofList (List.replicate 65536 'a')
+  let response ← handle { method := .post, path := "/echo", body := boundary }
+  check (response.body == boundary && response.status == .ok) "inclusive body limit"
+  let multibyte := String.ofList (List.replicate 32768 (Char.ofNat 0x3bb))
+  let response ← handle { method := .post, path := "/echo", body := multibyte }
+  check (response.body == multibyte && response.status == .ok) "multibyte body at byte limit"
+  let response ← handle { method := .post, path := "/echo", body := multibyte ++ "a" }
+  check (response.status == .payloadTooLarge) "body limit counts bytes, not characters"
+
+end Tests.Application

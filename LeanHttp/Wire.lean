@@ -1,6 +1,6 @@
-import LeanWeb.Http
+import LeanHttp.Types
 
-namespace LeanWeb.Wire
+namespace LeanHttp.Wire
 
 /-- Default aggregate limit, including the request line, headers, delimiter, and body. -/
 def defaultMaxRequestBytes : Nat := 1024 * 1024
@@ -128,4 +128,4 @@ def render (response : Response) (headOnly : Bool := false) : ByteArray :=
     s!"Content-Length: {body.size}\r\nConnection: close\r\n\r\n"
   if headOnly then header.toUTF8 else header.toUTF8 ++ body
 
-end LeanWeb.Wire
+end LeanHttp.Wire

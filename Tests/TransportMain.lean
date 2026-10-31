@@ -1,7 +1,7 @@
-import LeanWeb.Server
+import LeanHttp.Server
 import Std.Sync.Mutex
 
-open LeanWeb
+open LeanHttp
 
 -- Test-only effects and self-process diagnostics; never exposed by the example server.
 def main (args : List String) : IO Unit := do

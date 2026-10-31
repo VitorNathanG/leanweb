@@ -169,11 +169,11 @@ assertions or of the libuv implementation.
 
 ### Actual-server integration (root)
 
-The production [server](../../LeanWeb/Server.lean) uses this pinned runtime and
+The production [server](../../LeanHttp/Server.lean) uses this pinned runtime and
 single-owner result-task/cancellation pattern, but adds its own absolute monotonic
 deadline and tracked worker registry. The dependency-free
-[TCP suite](../../tests/http.test.mjs) runs the example and a
-[test-only fixture](../../tests/TransportMain.lean) through that actual server.
+[TCP suite](../../Tests/http.test.mjs) runs the example and a
+[test-only fixture](../../Tests/TransportMain.lean) through that actual server.
 The fixture uses two workers and a 200 ms read deadline, plus bounded slow handlers
 and two 16 MiB responses to exercise retained write slots. Both children are owned,
 loopback-only, and stopped by the harness. Each suite invocation is bounded to

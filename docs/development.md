@@ -19,14 +19,14 @@ the same build and executable checks.
 ```sh
 lake build
 lake exe leanweb_tests
-node --test tests/http.test.mjs
+node --test Tests/http.test.mjs
 node scripts/check-workflow.mjs
 git diff --check
 git diff --cached --check
 ```
 
-`lake build` includes the library, server, test entrypoints, and proof-bearing
-example; `lake exe leanweb_tests` actually executes tests. A successful build
+`lake build` includes the three runtime libraries, server, test entrypoints, and
+proof-bearing example; `lake exe leanweb_tests` actually executes tests. A successful build
 alone is not a successful test run. The socket suite starts its own built server
 on an available loopback port and stops that owned child when finished. It does
 not require a manually running server or contact an external service. The
@@ -43,20 +43,20 @@ failure output and investigate rather than disabling an assertion or timeout.
 Focused checks shorten feedback:
 
 ```sh
-lake build LeanWeb.Router LeanWeb.Decoding LeanWeb.Example
-lake build LeanWeb.WireTests LeanWeb.DecodingTests
+lake build LeanHttp LeanWeb Example
+lake build Tests.Http Tests.Framework Tests.Application
 lake build leanweb_transport_tests
-node --test --test-name-pattern='bounded connections' tests/http.test.mjs
+node --test --test-name-pattern='bounded connections' Tests/http.test.mjs
 ```
 
 For important proof changes, use `lake env lean` on an owned ignored scratch
 module under `.work/` containing imports and commands such as:
 
 ```lean
-import LeanWeb.Example
+import Example
 #print axioms LeanWeb.Router.lookup_sound
 #print axioms LeanWeb.Decoder.handle_error
-#print axioms LeanWeb.Example.divisionController
+#print axioms Example.divisionController
 ```
 
 Inspect the actual dependencies and explain changes. Text searches for proof

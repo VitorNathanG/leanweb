@@ -1,5 +1,7 @@
 import LeanWeb.Middleware
 
+open LeanHttp
+
 namespace LeanWeb
 
 /-- A pure controller together with its application-specific response contract. -/

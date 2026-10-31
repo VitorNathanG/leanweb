@@ -16,5 +16,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/http.test.mjs
+      - run: node --test Tests/http.test.mjs
       - run: node scripts/check-workflow.mjs

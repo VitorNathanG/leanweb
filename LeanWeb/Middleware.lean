@@ -1,5 +1,7 @@
 import LeanWeb.Router
 
+open LeanHttp
+
 namespace LeanWeb
 
 abbrev Middleware (α : Type) := Handler α → Handler α

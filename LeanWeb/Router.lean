@@ -1,4 +1,6 @@
-import LeanWeb.Http
+import LeanHttp.Types
+
+open LeanHttp
 
 namespace LeanWeb
 
@@ -10,7 +12,7 @@ structure RouteKey where
   path : String
   deriving DecidableEq, Repr
 
-def Request.routeKey (request : Request) : RouteKey :=
+def RouteKey.ofRequest (request : Request) : RouteKey :=
   { method := request.method, path := request.path }
 
 structure Route (α : Type) where
@@ -36,7 +38,7 @@ def lookup : List (Route α) → RouteKey → Option (Handler α)
     if route.key = key then some route.handler else lookup rest key
 
 def dispatch (router : Router α) (fallback : Handler α) : Handler α :=
-  fun request => match lookup router.routes request.routeKey with
+  fun request => match lookup router.routes (RouteKey.ofRequest request) with
     | some handler => handler request
     | none => fallback request
 
@@ -66,21 +68,21 @@ theorem lookup_none_iff (routes : List (Route α)) (key : RouteKey) :
     · simp [lookup, equal, ih, Ne.symm equal]
 
 theorem dispatch_missing (router : Router α) (fallback : Handler α) (request : Request)
-    (missing : request.routeKey ∉ router.routes.map Route.key) :
+    (missing : RouteKey.ofRequest request ∉ router.routes.map Route.key) :
     router.dispatch fallback request = fallback request := by
   simp [dispatch, (lookup_none_iff _ _).mpr missing]
 
 /-- Adding a fresh route makes it immediately reachable. -/
 theorem dispatch_added (router : Router α) (key : RouteKey) (handler fallback : Handler α)
     (fresh : key ∉ router.routes.map Route.key) (request : Request)
-    (matched : request.routeKey = key) :
+    (matched : RouteKey.ofRequest request = key) :
     (router.add key handler fresh).dispatch fallback request = handler request := by
   simp [dispatch, add, lookup, matched]
 
 /-- Adding a distinct route does not change how an existing request is dispatched. -/
 theorem dispatch_add_other (router : Router α) (key : RouteKey) (handler fallback : Handler α)
     (fresh : key ∉ router.routes.map Route.key) (request : Request)
-    (different : key ≠ request.routeKey) :
+    (different : key ≠ RouteKey.ofRequest request) :
     (router.add key handler fresh).dispatch fallback request =
       router.dispatch fallback request := by
   simp [dispatch, add, lookup, different]

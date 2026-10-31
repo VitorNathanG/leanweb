@@ -1,6 +1,8 @@
-import LeanWeb.Decoding
+import LeanWeb
 
-namespace LeanWeb.Example
+open LeanHttp LeanWeb
+
+namespace Example
 
 structure Services where
   greeting : IO String
@@ -71,4 +73,4 @@ theorem oversized_body_rejected (request : Request) (services : Services)
     exact Nat.not_le_of_lt oversized
   simp [Application.handle, app, Middleware.guard, denied, rejectBody, ReaderT.run]
 
-end LeanWeb.Example
+end Example

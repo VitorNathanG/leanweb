@@ -1,5 +1,5 @@
-import LeanWeb
-import LeanWeb.Example
+import Example
+import LeanHttp.Server
 
 def main (args : List String) : IO UInt32 := do
   let port ← match args with
@@ -13,8 +13,8 @@ def main (args : List String) : IO UInt32 := do
         else throw (IO.userError "Port must be in 1..65535")
       | none => throw (IO.userError "Usage: leanweb [port]")
     | _ => throw (IO.userError "Usage: leanweb [port]")
-  let services : LeanWeb.Example.Services := {
+  let services : Example.Services := {
     greeting := pure "LeanWeb: a small server with a verified core.\n" }
   IO.println s!"Starting LeanWeb on http://127.0.0.1:{port} (development server)"
-  LeanWeb.Server.serve (LeanWeb.Example.app.handle services) { port := port.toUInt16 }
+  LeanHttp.Server.serve (Example.app.handle services) { port := port.toUInt16 }
   return 0

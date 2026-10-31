@@ -20,7 +20,7 @@ Public pinned sources:
 - [Promise contract](https://github.com/leanprover/lean4/blob/797c613eb9b6d4ec95db23e3e00af9ac6657f24b/src/Init/System/Promise.lean)
 - [Release reference](https://api.github.com/repos/leanprover/lean4/git/ref/tags/v4.24.0)
 
-The application uses [Server.lean](../../LeanWeb/Server.lean). No machine-specific
+The application uses [Server.lean](../../LeanHttp/Server.lean). No machine-specific
 environment is needed for this source comparison. Platform-dependent runtime
 behavior has not been qualified by this report.
 

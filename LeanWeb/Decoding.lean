@@ -1,5 +1,7 @@
 import LeanWeb.Application
 
+open LeanHttp
+
 namespace LeanWeb
 
 inductive DecodeError where

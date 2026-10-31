@@ -1,6 +1,6 @@
 import Std
 
-namespace LeanWeb
+namespace LeanHttp
 
 inductive Method where
   | get | head | post | put | patch | delete | options
@@ -82,4 +82,4 @@ def Response.json (body : String) (status : Status := .ok) : Response :=
 
 def Response.notFound : Response := .text "Not found\n" .notFound
 
-end LeanWeb
+end LeanHttp
