@@ -39,7 +39,7 @@ arbitrary effectful handlers; its type alone does not make those effects verifie
 | Input binding | `LeanWeb/Decoding.lean` | `Decoder.sound`, `handle_error`, `handle_ok`; decoder tests | URL specification and unproved source-function semantics |
 | Pure controllers | `LeanWeb/Application.lean`, `LeanWeb/Decoding.lean` | `VerifiedHandler.ensures`, bound controller contract | Arbitrary service effects |
 | Example integration | `Example/Application.lean` | Body-limit and division proofs; application/TCP tests | General-purpose application security |
-| HTTP wire | `LeanHttp/Wire.lean` | `Tests/Http.lean`, `Tests/http.test.mjs` | Framing/serializer correctness is tested, not proved |
+| HTTP wire | `LeanHttp/Wire.lean`, `LeanHttp/Wire/Correctness.lean` | `Wire.parse_iff_represents`; direct-parser, specification, and TCP regressions | General rejection/incomplete-input equivalence, serializer correctness, compiled execution, and transport |
 | TCP lifetime | `LeanHttp/Server.lean` | Receive/timer probes; concurrent TCP, deadline, backpressure, reset, and FD regressions | Handler/write termination, graceful stop, listener failures, general memory/resource safety |
 
 The [API proof table](../README.md#what-is-proved) lists the individual guarantees.
@@ -75,8 +75,9 @@ the decoder's source relation and controller preconditions were preserved.
 The numeric decoder explicitly enforces ASCII digits because the new upstream
 conversion also accepts separators, which LeanWeb's existing syntax forbids.
 
-The parser and serializer, compiled execution, IO scheduling, FFI, libuv, and OS
-remain outside the application's proofs. A decoder relation to `String.toNat?`
+The parser theorem covers successful acceptance against the local wire model.
+General rejection/incomplete-input equivalence, the serializer, compiled execution,
+IO scheduling, FFI, libuv, and OS remain outside that theorem. A decoder relation to `String.toNat?`
 or `Decoder.queryValue` is not a proof that those functions implement a complete
 external format specification. Runtime evidence and explicit protocol limits
 remain necessary.

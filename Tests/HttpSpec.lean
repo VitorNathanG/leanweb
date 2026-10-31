@@ -127,6 +127,29 @@ private def invalidForm (form : RequestForm) (label : String) : IO Unit :=
   check (!(form.valid 512)) label
 
 def run : IO Unit := do
+  for (text, limit, expected) in [
+      ("0", 0, Except.ok 0),
+      ("0006", 6, .ok 6),
+      ("7", 6, .error (Wire.Internal.tooLarge)),
+      ("999999999999999999999x", 0, .error (Wire.Internal.bad "Invalid Content-Length")),
+      ("", 100, .error (Wire.Internal.bad "Invalid Content-Length"))] do
+    match Wire.Internal.contentLength text limit, expected with
+    | .ok actual, .ok expected => check (actual == expected) "decimal value"
+    | .error actual, .error expected => check (actual == expected) "decimal rejection"
+    | _, _ => throw (IO.userError "Incorrect decimal outcome")
+  for (separator, text, expected) in [
+      (' ', " GET  / ", ["", "GET", "", "/", ""]),
+      (':', "X:::é:", ["X", "", "", "é", ""]),
+      ('?', "/??x?", ["/", "", "x", ""]),
+      ('?', "", [""])] do
+    check (Wire.Internal.splitChar separator text == expected) "split preserves empty segments"
+  for (text, expected) in [
+      ("", [""]),
+      ("GET / HTTP/1.1\r\nHost: a", ["GET / HTTP/1.1", "Host: a"]),
+      ("\r\n\r\n", ["", "", ""]),
+      ("a\r\r\nb\n", ["a\r", "b\n"]),
+      ("X: é😀\r\n", ["X: é😀", ""])] do
+    check (Wire.Internal.splitLines text == expected) "CRLF splitting preserves source text"
   verify unicodeContract
   verify waitingMalformed
   verify waitingCR
@@ -144,7 +167,14 @@ def run : IO Unit := do
   accepted unicodeForm
   accepted { base with method := .options, target := .asterisk }
   accepted { base with target := .origin "/" (some "") }
+  accepted { base with
+    target := .origin "/" (some "?x??"),
+    fields := base.fields ++ [
+      { name := "X-Empty", value := "", leading := " \t ", trailing := "\t" },
+      { name := "X-Colons", value := ":é::", leading := " " }] }
   accepted { base with fields := base.fields ++ [{ name := "Content-Length", value := "0" }] }
+  accepted { base with fields := base.fields ++ [
+    { name := "X-Long", value := String.ofList (List.replicate 8192 'x') }] }
   accepted { base with
     target := .origin "/%zz\\<>" none, fields := [{ name := "Host", value := "[" }] }
   let body := "\uFEFF\r\n\x00"
@@ -181,6 +211,8 @@ def run : IO Unit := do
       ("GET / HTTP/1.1\r\nContent-Length: 999999999999999999x", .length),
       ("GET / HTTP/1.1\r\nContent-Length: 999999999999999999", .tooLarge),
       ("GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: bad", .transferEncoding),
+      ("GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nNo-Colon", .transferEncoding),
+      ("GET / HTTP/1.1\r\nNo-Colon\r\nTransfer-Encoding: chunked", .fieldName),
       ("GET / HTTP/1.1\r\nContent-Length: bad\r\nTransfer-Encoding: chunked", .length),
       ("GET / HTTP/1.1\r\nExpect:", .expect),
       ("GET / HTTP/1.1\r\nX: a", .missingHost)] do

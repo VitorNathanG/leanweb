@@ -12,10 +12,6 @@ postpone it indefinitely.
 
 ## HTTP Implementation
 
-- [ ] Prove parser soundness against the [wire specification](docs/http-wire.md)
-  and acceptance of valid supported requests. Relate decoded fields to their
-  source bytes and retain positive and negative regressions so rejection of
-  every request cannot pass.
 - [ ] Prove unambiguous request framing. Establish the exact body boundary and
   preserve missing-versus-zero Content-Length semantics. Cover repeated lengths,
   Content-Length/Transfer-Encoding conflicts, and already-buffered trailing data

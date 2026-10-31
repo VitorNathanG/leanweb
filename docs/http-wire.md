@@ -5,9 +5,9 @@ of `Wire.parse` and `Wire.render`. It is not an HTTP conformance claim.
 
 The declarative [Lean model](../LeanHttp/Spec.lean) specifies successful requests,
 incremental outcomes, rejection precedence, and response encoding. It imports
-HTTP types, not the parser or server. It uses Lean's UTF-8 string encoder;
-agreement with RFC 3629 and correctness of the implementation against the model
-are not yet proved.
+HTTP types, not the parser or server. It uses Lean's UTF-8 string encoder.
+Successful parser acceptance is proved equivalent to the request model;
+agreement with RFC 3629 remains unproved.
 
 The references are RFC 9112 for HTTP/1.1 messaging, RFC 9110 for HTTP semantics,
 and RFC 3629 for UTF-8. Local restrictions and known deviations are explicit below.
@@ -135,8 +135,18 @@ from `LeanHttp.Types`, not `Wire.render`.
 
 These definitions do not execute the production parser or server. UTF-8 is
 specified through string-encoding witnesses, leaving agreement between Lean's
-encoder and RFC 3629 as a separate obligation. Kernel-checked examples and
-executable comparisons cover selected cases; general parser correctness,
+encoder and RFC 3629 as a separate obligation.
+
+`LeanHttp.Wire.parse_iff_represents` in `LeanHttp/Wire/Correctness.lean` proves,
+for every byte buffer, limit, and request:
+
+```lean
+Wire.parse bytes limit = .ok (some request) ↔
+  Spec.Represents limit bytes request
+```
+
+This establishes successful acceptance and decoded source fields in both
+directions. General equivalence for rejection and incomplete-input outcomes,
 outcome determinism, and serializer correctness remain unproved.
 
 ## Incomplete Input And Rejection

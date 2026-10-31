@@ -4,34 +4,34 @@ set_option autoImplicit false
 
 namespace LeanHttp.Spec
 
-private def ows (c : Char) : Bool := c == ' ' || c == '\t'
+def ows (c : Char) : Bool := c == ' ' || c == '\t'
 
-private def token (c : Char) : Bool :=
+def token (c : Char) : Bool :=
   ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') ||
   ('0' <= c && c <= '9') || "!#$%&'*+-.^_`|~".toList.contains c
 
-private def digits (text : String) : Bool :=
+def digits (text : String) : Bool :=
   !text.isEmpty && text.toList.all (fun c => '0' <= c && c <= '9')
 
-private def decimal (text : String) : Nat :=
+def decimal (text : String) : Nat :=
   text.toList.foldl (fun n c => 10 * n + (c.toNat - '0'.toNat)) 0
 
-private def targetChar (c : Char) : Bool := 32 < c.toNat && c.toNat < 127 && c != '#'
+def targetChar (c : Char) : Bool := 32 < c.toNat && c.toNat < 127 && c != '#'
 
-private def hostValue (text : String) : Bool :=
+def hostValue (text : String) : Bool :=
   !text.isEmpty && text.toList.all (fun c => targetChar c && !",/\\@?".toList.contains c)
 
-private def fieldValue (text : String) : Bool :=
+def fieldValue (text : String) : Bool :=
   text.toList.all (fun c => (32 <= c.toNat || c == '\t') && c.toNat != 127)
 
-private def trimOWS (text : String) : String :=
+def trimOWS (text : String) : String :=
   String.ofList ((text.toList.dropWhile ows).reverse.dropWhile ows).reverse
 
-private def asciiLower (text : String) : String :=
+def asciiLower (text : String) : String :=
   String.ofList (text.toList.map fun c =>
     if 'A' <= c && c <= 'Z' then Char.ofNat (c.toNat + 32) else c)
 
-private def methodText : Method → String
+def methodText : Method → String
   | .get => "GET" | .head => "HEAD" | .post => "POST" | .put => "PUT"
   | .patch => "PATCH" | .delete => "DELETE" | .options => "OPTIONS"
 
@@ -59,8 +59,10 @@ structure Field where
   trailing : String := ""
   deriving DecidableEq, Repr
 
-def Field.text (field : Field) : String :=
-  field.name ++ ":" ++ field.leading ++ field.value ++ field.trailing ++ "\r\n"
+def Field.line (field : Field) : String :=
+  field.name ++ ":" ++ field.leading ++ field.value ++ field.trailing
+
+def Field.text (field : Field) : String := field.line ++ "\r\n"
 
 def Field.valid (field : Field) : Bool :=
   !field.name.isEmpty && field.name.toList.all token && fieldValue field.value &&

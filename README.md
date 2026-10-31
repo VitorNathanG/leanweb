@@ -151,16 +151,18 @@ axioms, or `native_decide` proofs in the project. Warnings are treated as build 
 | Failed decoding selects rejection; successful decoding supplies a validity proof | `Decoder.handle_error`, `Decoder.handle_ok` |
 | Bound controllers return either a decoding-error response or a response satisfying their postcondition | `(Controller.bind controller decoder).ensures` |
 | Division output reconstructs the dividend and has a remainder smaller than the divisor | `Example.divisionController.ensures` |
+| Successful parsing is equivalent to the independent request specification | `Wire.parse_iff_represents` |
 
 The routing and middleware theorems quantify over their inputs, rather than testing
 a handful of example URLs. The guard theorem is equality of the selected result,
 including when that result is an IO action. It does not prove that a policy correctly
 implements your security requirements or that an arbitrary rejection handler has no effects.
 
-**Proof boundary:** these guarantees concern the Lean request model and pure core.
-They do not establish HTTP/RFC conformance, HTTP parser correctness, general JSON validity,
-network reliability, runtime/compiler correctness, resource safety, or properties of
-arbitrary IO services. Numeric decoder proofs relate successful results to Lean's
+**Proof boundary:** these guarantees concern the Lean request model, pure core,
+and successful parsing against the local wire specification. They do not establish
+HTTP/RFC conformance, general rejection or incomplete-input behavior, general JSON
+validity, network reliability, runtime/compiler correctness, resource safety, or
+properties of arbitrary IO services. Numeric decoder proofs relate successful results to Lean's
 `String.toNat?` and the specified source function. The raw query binder's syntax
 and duplicate-key behavior are regression-tested, not proved against a URL specification.
 `VerifiedHandler.lift` wraps a proved pure result in `pure`; neither it nor
@@ -170,8 +172,9 @@ OS, compiler, and Lean runtime remain outside the application proofs.
 ## HTTP Subset
 
 The [wire profile](docs/http-wire.md) specifies the byte grammar, decoded source
-relations, error precedence, and known RFC deviations. The parser and serializer
-are tested, not proved against that specification.
+relations, error precedence, and known RFC deviations. Successful parser acceptance
+is proved equivalent to its request model. General rejection and incomplete-input
+behavior and serializer correctness remain tested, not proved.
 
 - HTTP/1.1 only, one request per connection, always `Connection: close`.
 - GET, HEAD, POST, PUT, PATCH, DELETE, and OPTIONS are parsed. Unregistered keys return 404, including wrong methods; there is no automatic 405/Allow handling.
