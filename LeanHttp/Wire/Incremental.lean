@@ -7,6 +7,7 @@ namespace LeanHttp.Wire.Internal
 theorem scanHeader_lower (bytes : ByteArray) (i : Nat) (boundary : HeaderBoundary bytes)
     (found : scanHeader bytes i = .ok (some boundary)) : i + 4 <= boundary.endPos := by
   rw [scanHeader] at found
+  simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos] at found
   split at found
   next within =>
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at found
@@ -45,25 +46,33 @@ private theorem scanHeader_partial_delimiter (bytes : ByteArray) (i : Nat)
   by_cases first : i < bytes.size
   · by_cases second : i + 1 < bytes.size
     · rw [scanHeader]
+      simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
       simp only [first, ↓reduceDIte, cr first, lf second]
       simp [second, show ¬i + 3 < bytes.size by omega]
       rw [scanHeader]
+      simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
       simp only [second, ↓reduceDIte, lf second, show i + 1 - 1 = i by omega, cr first]
       simp
       by_cases third : i + 2 < bytes.size
       · rw [scanHeader]
+        simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
         simp only [show i + 1 + 1 = i + 2 by omega, third, ↓reduceDIte, cr' third]
         simp [show ¬i + 2 + 1 < bytes.size by omega, show ¬i + 2 + 3 < bytes.size by omega]
         rw [scanHeader]
+        simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
         simp [show ¬i + 2 + 1 < bytes.size by omega, Pure.pure, Except.pure]
       · rw [scanHeader]
+        simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
         simp [show ¬i + 1 + 1 < bytes.size by omega, Pure.pure, Except.pure]
     · rw [scanHeader]
+      simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
       simp only [first, ↓reduceDIte, cr first]
       simp [second, show ¬i + 3 < bytes.size by omega]
       rw [scanHeader]
+      simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
       simp [second, Pure.pure, Except.pure]
   · rw [scanHeader]
+    simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
     simp [first, Pure.pure, Except.pure]
 
 theorem scanHeader_agrees (bytes other : ByteArray) (i : Nat) (boundary : HeaderBoundary bytes)
@@ -92,6 +101,7 @@ theorem scanHeader_agrees (bytes other : ByteArray) (i : Nat) (boundary : Header
         simp only [next, show i + 1 < bytes.size by omega]
       · left; simp [next]
     rw [scanHeader] at found
+    simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos] at found
     split at found
     next within =>
       simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at found
@@ -128,6 +138,7 @@ theorem scanHeader_agrees (bytes other : ByteArray) (i : Nat) (boundary : Header
                     other[i + 2]! == 13 && other[i + 3]! == 10) = true := by
                   simp only [first, second, third, fourth, enough]; decide
                 rw [scanHeader]
+                simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
                 simp only [withinOther, ↓reduceDIte, noLFOther, noCROther, cleanOther,
                   foundOther, Bind.bind, Except.bind, Pure.pure, Except.pure]
                 exact ⟨_, rfl, rfl⟩
@@ -147,11 +158,13 @@ theorem scanHeader_agrees (bytes other : ByteArray) (i : Nat) (boundary : Header
               obtain ⟨result, parsed, relation⟩ := scanHeader_agrees bytes other (i + 1) boundary same found
               refine ⟨result, ?_, relation⟩
               rw [scanHeader]
+              simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
               simpa only [withinOther, ↓reduceDIte, noLFOther, noCROther, cleanOther,
                 missingOther, Bool.false_eq_true, ↓reduceIte, Bind.bind, Except.bind] using parsed
     next exhausted => cases found
   · refine ⟨none, ?_, by omega⟩
     rw [scanHeader]
+    simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
     simp [withinOther, Pure.pure, Except.pure]
 termination_by bytes.size - i
 
@@ -164,6 +177,7 @@ theorem parse_frame (bytes : ByteArray) (limit : Nat) (request : Request)
       bytes.size = boundary.endPos + head.length ∧
       bytes.extract boundary.endPos bytes.size = request.body.toUTF8 := by
   unfold Wire.parse at parsed
+  simp only [extractWithin] at parsed
   simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at parsed
   split at parsed
   next large => cases parsed
@@ -220,6 +234,7 @@ theorem parse_prefix (bytes : ByteArray) (limit : Nat) (request : Request) (cut 
   cases result with
   | none =>
     unfold parse
+    simp only [extractWithin]
     rw [if_neg prefixFits]
     simp only [headerEnd, scanned, Bind.bind, Except.bind, size]
     simp [show cut ≠ limit by omega, Pure.pure, Except.pure]
@@ -231,13 +246,14 @@ theorem parse_prefix (bytes : ByteArray) (limit : Nat) (request : Request) (cut 
       rw [ByteArray.extract_extract]
       simp only [Nat.zero_add, Nat.min_eq_left (by omega : boundary.endPos - 4 <= cut)]
     unfold parse
+    simp only [extractWithin]
     rw [if_neg prefixFits]
     simp only [headerEnd, scanned, Bind.bind, Except.bind, endEq]
     rw [headerSame, headerOk]
     simp only [headOk]
     simp only [show ¬limit < boundary.endPos + head.length by omega,
       show (bytes.extract 0 cut).size < boundary.endPos + head.length by omega,
-      ↓reduceIte, Pure.pure, Except.pure]
+      ↓reduceIte, ↓reduceDIte, Pure.pure, Except.pure]
 
 /-- A nonempty suffix already in the buffer is rejected, with overflow taking precedence. -/
 theorem parse_append (bytes extra : ByteArray) (limit : Nat) (request : Request)
@@ -263,6 +279,7 @@ theorem parse_append (bytes extra : ByteArray) (limit : Nat) (request : Request)
       rw [ByteArray.extract_append]
       simp [Nat.sub_eq_zero_of_le (by omega : boundary.endPos - 4 <= bytes.size)]
     unfold parse
+    simp only [extractWithin]
     by_cases overflow : limit < (bytes ++ extra).size
     · simp only [overflow, ↓reduceIte]
       rfl

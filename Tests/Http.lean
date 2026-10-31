@@ -88,6 +88,19 @@ def run : IO Unit := do
   rejected (bytes.extract 0 headerBlock.toUTF8.size) .payloadTooLarge (bytes.size - 1)
   rejected "GET /".toUTF8 .payloadTooLarge 5
   rejected ByteArray.empty .payloadTooLarge 0
+  match Wire.parse ByteArray.empty 1 with
+  | .ok none => pure ()
+  | _ => throw (IO.userError "Empty input with a positive limit must wait")
+  for ending in ["", "\r", "\r\n", "\r\n\r"] do
+    let prefixBytes := ("GET / HTTP/1.1\r\nHost: a" ++ ending).toUTF8
+    match Wire.parse prefixBytes (prefixBytes.size + 1) with
+    | .ok none => pure ()
+    | _ => throw (IO.userError "Incomplete header below its limit must wait")
+    rejected prefixBytes .payloadTooLarge prefixBytes.size
+  for byte in [10, 0, 127] do
+    let invalid := ByteArray.mk #[byte]
+    rejected invalid .badRequest 1
+    rejected invalid .payloadTooLarge 0
   rejected "POST / HTTP/1.1\r\nHost: a\r\nContent-Length: 999999999999999999999\r\n\r\n".toUTF8
     .payloadTooLarge
   -- Invalid, overlong, surrogate, and truncated UTF-8 sequences at an exact body boundary.

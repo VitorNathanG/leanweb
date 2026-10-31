@@ -93,6 +93,7 @@ private theorem scan_safe (bytes : ByteArray) (i : Nat) (within : i < bytes.size
     · simp [h]
     · simp [UInt8.not_lt.mpr h, notDel]
   rw [scanHeader]
+  simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
   simp only [within, ↓reduceDIte, noControl, beq_eq_false_iff_ne.mpr noLF,
     beq_eq_false_iff_ne.mpr noCR, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
 
@@ -123,9 +124,11 @@ theorem scan_crlf (bytes : ByteArray) (before rest : List UInt8) (b : UInt8)
     intro eq
     rcases safe with h | ⟨h, _⟩ <;> simp [eq] at h
   rw [scanHeader]
+  simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
   simp only [within, ↓reduceDIte, cr, lf, last, beq_eq_false_iff_ne.mpr noCR, nextWithin]
   simp
   rw [scanHeader]
+  simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
   have prev : before.length + 1 - 1 = before.length := by omega
   simp only [nextWithin, ↓reduceDIte, lf, prev, cr]
   simp [Nat.add_assoc]
@@ -144,6 +147,7 @@ theorem scan_delimiter (bytes : ByteArray) (before rest : List UInt8)
   simp only [List.length_append, List.length_cons, List.length_nil, Nat.reduceAdd] at lf cr' lastWithin lf'
   have nextWithin : before.length + 1 < bytes.size := by omega
   rw [scanHeader]
+  simp only [nextIsNotLF_eq, delimiterTail_eq, ← Bool.and_assoc, ← getElem!_pos]
   simp only [within, ↓reduceDIte, cr, lf, cr', lf', nextWithin, lastWithin]
   simp
   exact ⟨_, rfl, rfl⟩

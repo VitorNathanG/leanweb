@@ -67,6 +67,7 @@ open Internal
 theorem parse_sound (bytes : ByteArray) (limit : Nat) (request : Request)
     (parsed : parse bytes limit = .ok (some request)) : Spec.Represents limit bytes request := by
   unfold parse at parsed
+  simp only [extractWithin] at parsed
   simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at parsed
   split at parsed
   next large => cases parsed
@@ -173,6 +174,7 @@ theorem parse_form_complete (form : Spec.RequestForm) (limit : Nat) (valid : for
       headers := form.fields.map (fun f => (Spec.asciiLower f.name, f.value)),
       length := form.body.toUTF8.size } := by simpa only [endEq] using headOk
   unfold parse
+  simp only [extractWithin]
   simp only [Nat.not_lt.mpr fits, ↓reduceIte, found, Bind.bind, Except.bind, headerUTF8]
   rw [headOk']
   simp only [Nat.not_lt.mpr totalFits, size, Nat.lt_irrefl, ↓reduceIte, bodyUTF8, split,

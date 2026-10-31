@@ -28,19 +28,21 @@ def parse (bytes : ByteArray) (maxRequestBytes : Nat := defaultMaxRequestBytes) 
     if bytes.size == maxRequestBytes then throw tooLarge
     return none
   let endPos := boundary.endPos
-  let some header := String.fromUTF8? (bytes.extract 0 (endPos - 4))
+  let some header := String.fromUTF8? (extractWithin bytes 0 (endPos - 4)
+      (Nat.zero_le _) (by have := boundary.upper; omega))
     | throw (bad "Invalid UTF-8 in headers")
   let { method, target, headers, length } ← parseHead header (maxRequestBytes - endPos)
   let total := endPos + length
   if total > maxRequestBytes then throw tooLarge
-  if bytes.size < total then return none
-  if bytes.size > total then throw (bad "Trailing bytes after request")
-  let some body := String.fromUTF8? (bytes.extract endPos total)
-    | throw (bad "Invalid UTF-8 in body")
-  let path :: queryParts := splitChar '?' target | throw (bad "Missing target")
-  return some {
-    method, path, query := String.intercalate "?" queryParts
-    headers, body }
+  if short : bytes.size < total then return none
+  else
+    if bytes.size > total then throw (bad "Trailing bytes after request")
+    let some body := String.fromUTF8? (extractWithin bytes endPos total (by omega) (by omega))
+      | throw (bad "Invalid UTF-8 in body")
+    let path :: queryParts := splitChar '?' target | throw (bad "Missing target")
+    return some {
+      method, path, query := String.intercalate "?" queryParts
+      headers, body }
 
 /-- Render an exact UTF-8 byte Content-Length, retaining that length but omitting the HEAD body. -/
 def render (response : Response) (headOnly : Bool := false) : ByteArray :=

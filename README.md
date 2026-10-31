@@ -153,6 +153,7 @@ axioms, or `native_decide` proofs in the project. Warnings are treated as build 
 | Division output reconstructs the dividend and has a remainder smaller than the divisor | `Example.divisionController.ensures` |
 | Successful parsing is equivalent to the independent request specification | `Wire.parse_iff_represents` |
 | Accepted requests have exact framing and chunk-independent completion | [Framing theorems](docs/http-wire.md#lean-specification) |
+| Parser reads and slices are in bounds; acceptance respects the aggregate byte limit | [Byte-bound proofs](docs/http-wire.md#lean-specification) |
 
 The routing and middleware theorems quantify over their inputs, rather than testing
 a handful of example URLs. The guard theorem is equality of the selected result,
@@ -160,8 +161,8 @@ including when that result is an IO action. It does not prove that a policy corr
 implements your security requirements or that an arbitrary rejection handler has no effects.
 
 **Proof boundary:** these guarantees concern the Lean request model, pure core,
-and parser acceptance and framing against the local wire specification. They do not
-establish HTTP/RFC conformance, general rejection or incomplete-input behavior, general JSON
+and parser acceptance, framing, and byte bounds against the local wire specification.
+They do not establish HTTP/RFC conformance, general rejection or incomplete-input behavior, general JSON
 validity, network reliability, runtime/compiler correctness, resource safety, or
 properties of arbitrary IO services. Numeric decoder proofs relate successful results to Lean's
 `String.toNat?` and the specified source function. The raw query binder's syntax

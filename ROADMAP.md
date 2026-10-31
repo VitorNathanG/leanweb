@@ -12,9 +12,6 @@ postpone it indefinitely.
 
 ## HTTP Implementation
 
-- [ ] Prove successful parsing respects the configured aggregate byte limit and
-  parser byte accesses stay in bounds. Cover empty, exact-limit, oversized, and
-  long numeric inputs; distinguish byte bounds from time or memory guarantees.
 - [ ] Prove response framing and header separation. Content-Length must equal
   the encoded body's byte count; HEAD must retain that length without sending
   the body. Prove body text cannot alter the header block and test CRLF payloads.

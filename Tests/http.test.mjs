@@ -291,6 +291,23 @@ test('bounded connections and absolute read deadlines', { timeout: 30000 }, asyn
   const get = async path => response(await exchange(port, [request('GET', path)]));
   const effects = async () => Number((await get('/effects')).body);
 
+  await t.test('configured aggregate limit includes headers and body', async () => {
+    const limit = 4096;
+    const head = length => Buffer.from(
+      `POST /health HTTP/1.1\r\nHost: a\r\nContent-Length: ${String(length).padStart(4, '0')}\r\n\r\n`);
+    const bodySize = limit - head(0).length;
+    const complete = Buffer.concat([head(bodySize), Buffer.alloc(bodySize, 'x')]);
+    assert.equal(complete.length, limit);
+    assert.equal(response(await exchange(port, [complete])).status, 200);
+    const oversized = response(await exchange(port, [head(bodySize + 1)]));
+    assert.equal(oversized.status, 413);
+    assert.equal(oversized.body, 'Request too large\n');
+    const partialHead = Buffer.from('GET /health HTTP/1.1\r\nX: ');
+    const exhausted = response(await exchange(port,
+      [Buffer.concat([partialHead, Buffer.alloc(limit - partialHead.length, 'x')])]));
+    assert.equal(exhausted.status, 413);
+  });
+
   await t.test('silent peers and incomplete headers/bodies do not block healthy clients', async t => {
     for (const partial of ['', 'GET /touch HTTP/1.1\r\nHost: local',
       'POST /touch HTTP/1.1\r\nHost: local\r\nContent-Length: 4\r\n\r\nab']) {

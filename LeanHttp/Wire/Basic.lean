@@ -115,20 +115,50 @@ theorem HeaderBoundary.source {bytes : ByteArray} (boundary : HeaderBoundary byt
         (k := boundary.endPos) (boundary.endPos - 4) (Nat.zero_le _) (Nat.sub_le _ _),
         boundary.delimiter]
 
+@[inline] def extractWithin (bytes : ByteArray) (start stop : Nat)
+    (_ordered : start <= stop) (_within : stop <= bytes.size) : ByteArray :=
+  bytes.extract start stop
+
+@[inline] def nextIsNotLF (bytes : ByteArray) (i : Nat) : Bool :=
+  if next : i + 1 < bytes.size then bytes[i + 1] != 10 else false
+
+theorem nextIsNotLF_eq (bytes : ByteArray) (i : Nat) :
+    nextIsNotLF bytes i = (i + 1 < bytes.size && bytes[i + 1]! != 10) := by
+  unfold nextIsNotLF
+  by_cases next : i + 1 < bytes.size
+  · simp only [next, ↓reduceDIte, decide_true, Bool.true_and, getElem!_pos bytes (i + 1) next]
+  · simp only [next, ↓reduceDIte, decide_false, Bool.false_and]
+
+@[inline] def delimiterTail (bytes : ByteArray) (i : Nat) : Bool :=
+  if last : i + 3 < bytes.size then
+    bytes[i + 1]'(by omega) == 10 && bytes[i + 2]'(by omega) == 13 && bytes[i + 3] == 10
+  else false
+
+theorem delimiterTail_eq (bytes : ByteArray) (i : Nat) :
+    delimiterTail bytes i =
+      (i + 3 < bytes.size && bytes[i + 1]! == 10 && bytes[i + 2]! == 13 && bytes[i + 3]! == 10) := by
+  unfold delimiterTail
+  split
+  next last =>
+    simp only [last, decide_true, Bool.true_and,
+      getElem!_pos bytes (i + 1) (by omega), getElem!_pos bytes (i + 2) (by omega),
+      getElem!_pos bytes (i + 3) last]
+  next short => simp [short]
+
 def scanHeader (bytes : ByteArray) (i : Nat) : Except Response (Option (HeaderBoundary bytes)) := do
   if within : i < bytes.size then
-    let b := bytes[i]!
-    if b == 10 && (i == 0 || bytes[i - 1]! != 13) then
+    let b := bytes[i]
+    if b == 10 && (i == 0 || bytes[i - 1]'(by omega) != 13) then
       throw (bad "Bare LF in headers")
-    if b == 13 && i + 1 < bytes.size && bytes[i + 1]! != 10 then
+    if b == 13 && nextIsNotLF bytes i then
       throw (bad "Bare CR in headers")
     if (b < 32 && b != 9 && b != 10 && b != 13) || b == 127 then
       throw (bad "Control character in headers")
-    if found : b == 13 && i + 3 < bytes.size && bytes[i + 1]! == 10 &&
-        bytes[i + 2]! == 13 && bytes[i + 3]! == 10 then
+    if found : b == 13 && delimiterTail bytes i then
       have facts : bytes[i]! = 13 ∧ i + 3 < bytes.size ∧ bytes[i + 1]! = 10 ∧
           bytes[i + 2]! = 13 ∧ bytes[i + 3]! = 10 := by
-        simpa only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, and_assoc] using found
+        simpa only [b, delimiterTail_eq, ← getElem!_pos, Bool.and_eq_true, beq_iff_eq,
+          decide_eq_true_eq, and_assoc] using found
       have upper : i + 4 <= bytes.size := by omega
       have delimiter : bytes.extract i (i + 4) = "\r\n\r\n".toUTF8 := by
         rw [ByteArray.extract_add_four upper]

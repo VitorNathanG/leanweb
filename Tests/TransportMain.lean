@@ -27,4 +27,4 @@ def main (args : List String) : IO Unit := do
       let entries ← System.FilePath.readDir "/proc/self/fd"
       return .text (toString entries.size)
     | _ => return .text "ok")
-    { port := port.toUInt16, maxConnections := 2, requestTimeoutMs := 200 }
+    { port := port.toUInt16, maxRequestBytes := 4096, maxConnections := 2, requestTimeoutMs := 200 }

@@ -154,13 +154,38 @@ private def incremental (form : RequestForm) : IO Unit := do
     | .error error => check (error == Rejection.tooLarge.response) "overflow before trailing bytes"
     | _ => throw (IO.userError "Oversized suffix was not rejected")
 
+private def scannerBoundaries : IO Unit := do
+  let alphabet : List UInt8 := [0, 9, 10, 13, 32, 65, 127, 255]
+  let mut inputs := [ByteArray.empty]
+  for size in [:5] do
+    for bytes in inputs do
+      let error := ((scanChecks bytes).find? (fun check => !check.passes)).map Check.error
+      match error, Wire.Internal.headerEnd bytes with
+      | some expected, .error actual =>
+        check (actual == expected.response) "short scanner rejection precedence"
+      | none, .ok boundary =>
+        check (boundary.map (·.endPos) == Spec.headerEnd bytes) "short scanner boundary"
+      | _, _ => throw (IO.userError s!"Scanner disagrees on {repr bytes.data}")
+      for start in [bytes.size:bytes.size + 2] do
+        match Wire.Internal.scanHeader bytes start with
+        | .ok none => pure ()
+        | _ => throw (IO.userError "Exhausted scanner must not read a byte")
+    if size < 4 then
+      inputs := inputs.flatMap fun bytes => alphabet.map bytes.push
+
 def run : IO Unit := do
+  scannerBoundaries
+  let zeroes := String.ofList (List.replicate 8192 '0')
   for (text, limit, expected) in [
       ("0", 0, Except.ok 0),
       ("0006", 6, .ok 6),
       ("7", 6, .error (Wire.Internal.tooLarge)),
       ("999999999999999999999x", 0, .error (Wire.Internal.bad "Invalid Content-Length")),
-      ("", 100, .error (Wire.Internal.bad "Invalid Content-Length"))] do
+      ("", 100, .error (Wire.Internal.bad "Invalid Content-Length")),
+      (zeroes, 0, .ok 0),
+      (zeroes ++ "6", 6, .ok 6),
+      (zeroes ++ "7", 6, .error Wire.Internal.tooLarge),
+      (zeroes ++ "999x", 0, .error (Wire.Internal.bad "Invalid Content-Length"))] do
     match Wire.Internal.contentLength text limit, expected with
     | .ok actual, .ok expected => check (actual == expected) "decimal value"
     | .error actual, .error expected => check (actual == expected) "decimal rejection"
@@ -207,6 +232,7 @@ def run : IO Unit := do
       { name := "X-Empty", value := "", leading := " \t ", trailing := "\t" },
       { name := "X-Colons", value := ":é::", leading := " " }] }
   accepted { base with fields := base.fields ++ [{ name := "Content-Length", value := "0" }] }
+  accepted { base with fields := base.fields ++ [{ name := "Content-Length", value := zeroes }] }
   accepted { base with fields := base.fields ++ [
     { name := "X-Long", value := String.ofList (List.replicate 8192 'x') }] }
   accepted { base with

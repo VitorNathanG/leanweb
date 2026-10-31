@@ -159,6 +159,17 @@ directions.
 | `parse_chunks` | Every finite chunk partition, including empty chunks, waits until all request bytes are present and returns the same request. |
 | `parse_append` | Any nonempty buffered suffix is rejected: aggregate overflow takes precedence over trailing bytes. |
 
+`LeanHttp/Wire/Bounds.lean` proves that every `ok` result stays within the aggregate
+byte limit, `ok none` leaves a positive byte budget, and every oversized buffer
+returns 413 before syntax checks. A successfully decoded body's UTF-8 bytes fit
+the budget remaining after its header boundary. Empty input waits at a positive
+limit; a zero limit returns 413.
+
+The executable scanner's indexed reads and parser's header/body slices carry
+Lean bounds proofs. These cover incomplete and rejected input too, but do not
+prove time or memory bounds or the correctness of compiled code, byte-array
+primitives, or UTF-8 routines.
+
 These are pure byte-buffer guarantees. They exclude EOF, deadlines, socket
 behavior, and data arriving after completion. General rejection/incomplete-input
 equivalence, outcome determinism, and serializer correctness remain unproved.
