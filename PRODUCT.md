@@ -20,7 +20,9 @@ division controller proves quotient/remainder laws for the values decoded from
 the request. Routing and middleware proofs concern the core definitions that the
 application uses; they do not verify the network stack or arbitrary IO services.
 
-The [README](README.md) owns the detailed API and supported HTTP subset.
+The [README](README.md) owns the API and HTTP overview. The
+[wire profile](docs/http-wire.md) owns the detailed byte contract and known RFC
+deviations.
 [Architecture](docs/architecture.md) owns decisions and the evidence/trust map.
 [Development](docs/development.md) owns verification procedures.
 

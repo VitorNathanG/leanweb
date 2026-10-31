@@ -12,12 +12,10 @@ postpone it indefinitely.
 
 ## HTTP Implementation
 
-- [ ] Specify the supported HTTP/1.1 byte grammar independently of the parser.
-  Define accepted syntax, framing, UTF-8 rules, limits, and deliberate rejections
-  against RFC 9110 and RFC 9112. Distinguish this subset from full HTTP conformance.
-- [ ] Prove parser soundness against that specification and acceptance of valid
-  supported requests. Relate decoded fields to their source bytes and retain
-  positive and negative regressions so rejection of every request cannot pass.
+- [ ] Prove parser soundness against the [wire specification](docs/http-wire.md)
+  and acceptance of valid supported requests. Relate decoded fields to their
+  source bytes and retain positive and negative regressions so rejection of
+  every request cannot pass.
 - [ ] Prove unambiguous request framing. Establish the exact body boundary and
   preserve missing-versus-zero Content-Length semantics. Cover repeated lengths,
   Content-Length/Transfer-Encoding conflicts, and already-buffered trailing data

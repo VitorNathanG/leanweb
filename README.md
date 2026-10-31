@@ -169,6 +169,10 @@ OS, compiler, and Lean runtime remain outside the application proofs.
 
 ## HTTP Subset
 
+The [wire profile](docs/http-wire.md) specifies the byte grammar, decoded source
+relations, error precedence, and known RFC deviations. The parser and serializer
+are tested, not proved against that specification.
+
 - HTTP/1.1 only, one request per connection, always `Connection: close`.
 - GET, HEAD, POST, PUT, PATCH, DELETE, and OPTIONS are parsed. Unregistered keys return 404, including wrong methods; there is no automatic 405/Allow handling.
 - Origin-form ASCII targets and `OPTIONS *`; the wire parser leaves path and query raw. No percent decoding, path normalization, or path-parameter binding. Numeric query binding is available separately in the application decoding layer.
