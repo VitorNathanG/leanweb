@@ -1,0 +1,111 @@
+{
+  "pipeline": [
+    {
+      "mode": "parse",
+      "repetition": 1,
+      "iterations": 100000,
+      "nanoseconds": 310888667,
+      "checksum": 784370
+    },
+    {
+      "mode": "handle",
+      "repetition": 1,
+      "iterations": 100000,
+      "nanoseconds": 5456792,
+      "checksum": 1500000
+    },
+    {
+      "mode": "render",
+      "repetition": 1,
+      "iterations": 100000,
+      "nanoseconds": 10255500,
+      "checksum": 22818732
+    },
+    {
+      "mode": "pipeline",
+      "repetition": 1,
+      "iterations": 100000,
+      "nanoseconds": 312323376,
+      "checksum": 12000000
+    },
+    {
+      "mode": "parse",
+      "repetition": 2,
+      "iterations": 100000,
+      "nanoseconds": 294612250,
+      "checksum": 784370
+    },
+    {
+      "mode": "handle",
+      "repetition": 2,
+      "iterations": 100000,
+      "nanoseconds": 5036833,
+      "checksum": 1500000
+    },
+    {
+      "mode": "render",
+      "repetition": 2,
+      "iterations": 100000,
+      "nanoseconds": 10175584,
+      "checksum": 22818732
+    },
+    {
+      "mode": "pipeline",
+      "repetition": 2,
+      "iterations": 100000,
+      "nanoseconds": 311956625,
+      "checksum": 12000000
+    },
+    {
+      "mode": "parse",
+      "repetition": 3,
+      "iterations": 100000,
+      "nanoseconds": 294084917,
+      "checksum": 784370
+    },
+    {
+      "mode": "handle",
+      "repetition": 3,
+      "iterations": 100000,
+      "nanoseconds": 4983375,
+      "checksum": 1500000
+    },
+    {
+      "mode": "render",
+      "repetition": 3,
+      "iterations": 100000,
+      "nanoseconds": 10333875,
+      "checksum": 22818732
+    },
+    {
+      "mode": "pipeline",
+      "repetition": 3,
+      "iterations": 100000,
+      "nanoseconds": 309770626,
+      "checksum": 12000000
+    }
+  ],
+  "traces": [
+    {
+      "variant": "baseline",
+      "requests": 3793,
+      "clone": 3795,
+      "futex": 189163,
+      "getrandom": 3797
+    },
+    {
+      "variant": "pool",
+      "requests": 1368,
+      "clone": 38,
+      "futex": 560438,
+      "getrandom": 40
+    },
+    {
+      "variant": "native",
+      "requests": 4743,
+      "clone": 34,
+      "futex": 211990,
+      "getrandom": 36
+    }
+  ]
+}
