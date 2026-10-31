@@ -1,0 +1,38 @@
+{
+  "traces": [
+    {
+      "variant": "baseline",
+      "requests": 4125,
+      "clone": 4127,
+      "futex": 204467
+    },
+    {
+      "variant": "patched",
+      "requests": 4426,
+      "clone": 4428,
+      "futex": 154427
+    }
+  ],
+  "provenance": [
+    {
+      "variant": "baseline",
+      "members": 35,
+      "changed": [
+        "object.cpp.o"
+      ],
+      "sourceSHA256": "e03ea4317ad44fb91a4cc9097abe1601b1e1cf8fb77f5ab7b0620fdfcf348430",
+      "objectSHA256": "63bb089298c2b6ff07629a78492072e25f5e015106ff5ff413d38404257ff9ba",
+      "patchSHA256": "868cae9d91ede02f38fc9e39d5c1b5f5278f31d34fe5334ab97f2abb0a0e9d19"
+    },
+    {
+      "variant": "patched",
+      "members": 35,
+      "changed": [
+        "object.cpp.o"
+      ],
+      "sourceSHA256": "7731933298f5d2dae0f32a71b4bb20fe0970cfeaacb1859002149682eb00d13c",
+      "objectSHA256": "2edcd2dbfe280cef00b1e1d8b5884b3486413ad52c29fa04749bbf131e8ec278",
+      "patchSHA256": "868cae9d91ede02f38fc9e39d5c1b5f5278f31d34fe5334ab97f2abb0a0e9d19"
+    }
+  ]
+}

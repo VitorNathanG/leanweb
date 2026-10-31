@@ -1,0 +1,109 @@
+--- a/src/runtime/object.cpp
++++ b/src/runtime/object.cpp
+@@ -9,6 +9,7 @@
+ #include <algorithm>
+ #include <vector>
+ #include <deque>
++#include <unordered_map>
+ #include <cmath>
+ #include <lean/lean.h>
+ #include "runtime/object.h"
+@@ -765,9 +766,57 @@
+     unsigned                                      m_queues_size{0};
+     unsigned                                      m_max_prio{0};
+     condition_variable                            m_queue_cv;
+-    condition_variable                            m_task_finished_cv;
++    std::unordered_multimap<lean_task_object *, condition_variable *> m_task_waiters;
+     condition_variable                            m_dedicated_finished_cv;
+     bool                                          m_shutting_down{false};
++
++    // Registration, notification, and removal all hold m_mutex. The caller retains
++    // the tasks until this stack-owned waiter is removed, including waitAny losers.
++    class scoped_task_waiter {
++        task_manager & m_manager;
++        lean_task_object * m_task;
++        object * m_task_list;
++        condition_variable m_cv;
++
++        void remove(lean_task_object * task) {
++            auto range = m_manager.m_task_waiters.equal_range(task);
++            for (auto it = range.first; it != range.second;) {
++                if (it->second == &m_cv)
++                    it = m_manager.m_task_waiters.erase(it);
++                else
++                    ++it;
++            }
++        }
++
++    public:
++        scoped_task_waiter(task_manager & manager):
++            m_manager(manager), m_task(nullptr), m_task_list(nullptr) {}
++
++        void watch(lean_task_object * task) {
++            m_task = task;
++            m_manager.m_task_waiters.emplace(task, &m_cv);
++        }
++
++        void watch(object * task_list) {
++            m_task_list = task_list;
++            for (object * it = task_list; !is_scalar(it); it = cnstr_get(it, 1))
++                m_manager.m_task_waiters.emplace(lean_to_task(cnstr_get(it, 0)), &m_cv);
++        }
++
++        scoped_task_waiter(scoped_task_waiter const &) = delete;
++        scoped_task_waiter & operator=(scoped_task_waiter const &) = delete;
++
++        ~scoped_task_waiter() {
++            if (m_task) {
++                remove(m_task);
++            } else if (m_task_list) {
++                for (object * it = m_task_list; !is_scalar(it); it = cnstr_get(it, 1))
++                    remove(lean_to_task(cnstr_get(it, 0)));
++            }
++        }
++
++        void wait(unique_lock<mutex> & lock) { m_cv.wait(lock); }
++    };
+
+     lean_task_object * dequeue() {
+         lean_assert(m_queues_size != 0);
+@@ -932,7 +981,9 @@
+         /* After the task has been finished and we propagated
+            dependencies, we can release `imp` and keep just the value */
+         free_task_imp(imp);
+-        m_task_finished_cv.notify_all();
++        auto range = m_task_waiters.equal_range(t);
++        for (auto it = range.first; it != range.second; ++it)
++            it->second->notify_one();
+     }
+
+     void handle_finished(unique_lock<mutex> & lock, lean_task_object * t, lean_task_imp * imp) {
+@@ -1040,7 +1091,10 @@
+             else
+                 m_queue_cv.notify_one();
+         }
+-        m_task_finished_cv.wait(lock, [&]() { return t->m_value != nullptr; });
++        scoped_task_waiter waiter(*this);
++        waiter.watch(t);
++        while (!t->m_value)
++            waiter.wait(lock);
+         if (in_pool) {
+             m_max_std_workers--;
+         }
+@@ -1050,11 +1104,15 @@
+         if (object * t = wait_any_check(task_list))
+             return t;
+         unique_lock<mutex> lock(m_mutex);
++        if (object * t = wait_any_check(task_list))
++            return t;
++        scoped_task_waiter waiter(*this);
++        waiter.watch(task_list);
+         while (true) {
+             if (object * t = wait_any_check(task_list))
+                 return t;
+-            m_task_finished_cv.wait(lock);
++            waiter.wait(lock);
+         }
+     }
+
+     void deactivate_task(lean_task_object * t) {
