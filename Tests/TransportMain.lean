@@ -14,6 +14,8 @@ def main (args : List String) : IO Unit := do
       effects.atomically (modify (· + 1))
       return .text "touched"
     | "/effects" => return .text (toString (← effects.atomically get))
+    | "/framing" =>
+      return .text "\r\nX-Injected: yes\r\nContent-Length: 0\r\n\r\nHTTP/1.1 500 Forged\r\n\r\né😀\x00" .created
     | "/throw" => throw (IO.userError "test-only secret exception")
     | "/slow-handler" =>
       effects.atomically (modify (· + 1))

@@ -1,5 +1,5 @@
 import LeanHttp.Spec
-import LeanHttp.Wire
+import LeanHttp.Wire.Response
 
 set_option autoImplicit false
 
@@ -173,6 +173,21 @@ private def scannerBoundaries : IO Unit := do
     if size < 4 then
       inputs := inputs.flatMap fun bytes => alphabet.map bytes.push
 
+private def responseFraming (response : Response) : IO Unit := do
+  let header := Wire.render response true
+  let sameSize : Response := { response with body := "".pushn 'x' response.body.toUTF8.size }
+  check (Wire.render sameSize true == header) "headers depend on byte length, not body contents"
+  for headOnly in [false, true] do
+    let bytes := Wire.render response headOnly
+    check (decide (ResponseRepresents response headOnly bytes)) "response byte contract"
+    match Wire.Internal.headerEnd bytes with
+    | .ok (some boundary) =>
+      check (boundary.endPos == header.size) "first response header boundary"
+      check (bytes.extract 0 boundary.endPos == header) "body cannot change header bytes"
+      check (bytes.extract boundary.endPos bytes.size ==
+        if headOnly then ByteArray.empty else response.body.toUTF8) "exact response body bytes"
+    | _ => throw (IO.userError "Missing or malformed response header boundary")
+
 def run : IO Unit := do
   scannerBoundaries
   let zeroes := String.ofList (List.replicate 8192 '0')
@@ -284,11 +299,10 @@ def run : IO Unit := do
   for status in [Status.ok, .created, .badRequest, .unauthorized, .forbidden, .notFound,
       .methodNotAllowed, .requestTimeout, .payloadTooLarge, .internalServerError, .notImplemented] do
     for contentType in [ContentType.text, .json] do
-      for body in ["", "ASCII", "é😀", "\r\nInjected: header\r\n\x00"] do
-        let response : Response := { status, contentType, body }
-        for headOnly in [false, true] do
-          check (decide (ResponseRepresents response headOnly (Wire.render response headOnly)))
-            "response byte contract"
+      for body in ["", "ASCII", "é😀", "\r\nInjected: header\r\n\x00",
+          "\r\nContent-Length: 0\r\n\r\nHTTP/1.1 500 Forged\r\n\r\né😀\x00"] ++
+          [9, 10, 99, 100, 999, 1000].map (fun size => "".pushn 'x' size) do
+        responseFraming { status, contentType, body }
   IO.println "HTTP specification tests passed"
 
 end Tests.HttpSpec

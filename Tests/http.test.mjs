@@ -291,6 +291,24 @@ test('bounded connections and absolute read deadlines', { timeout: 30000 }, asyn
   const get = async path => response(await exchange(port, [request('GET', path)]));
   const effects = async () => Number((await get('/effects')).body);
 
+  await t.test('response payload cannot inject headers; HEAD retains its byte length', async () => {
+    const body = '\r\nX-Injected: yes\r\nContent-Length: 0\r\n\r\nHTTP/1.1 500 Forged\r\n\r\n\u00e9\ud83d\ude00\u0000';
+    const fullBytes = await exchange(port, [request('GET', '/framing')]);
+    const full = response(fullBytes);
+    const end = fullBytes.indexOf('\r\n\r\n') + 4;
+    assert.equal(full.status, 201);
+    assert.equal(full.body, body);
+    assert.equal(Number(full.headers['content-length']), Buffer.byteLength(body));
+    assert.deepEqual(Object.keys(full.headers).sort(), ['connection', 'content-length', 'content-type']);
+    assert.equal(fullBytes.subarray(0, end - 4).toString().split('\r\n').length, 4);
+    assert.deepEqual(fullBytes.subarray(end), Buffer.from(body));
+    const headBytes = await exchange(port, [request('HEAD', '/framing')]);
+    const head = response(headBytes, { head: true });
+    assert.equal(head.status, full.status);
+    assert.deepEqual(head.headers, full.headers);
+    assert.deepEqual(headBytes, fullBytes.subarray(0, end));
+  });
+
   await t.test('configured aggregate limit includes headers and body', async () => {
     const limit = 4096;
     const head = length => Buffer.from(

@@ -172,7 +172,7 @@ primitives, or UTF-8 routines.
 
 These are pure byte-buffer guarantees. They exclude EOF, deadlines, socket
 behavior, and data arriving after completion. General rejection/incomplete-input
-equivalence, outcome determinism, and serializer correctness remain unproved.
+equivalence and outcome determinism remain unproved.
 
 ## Incomplete Input And Rejection
 
@@ -231,7 +231,18 @@ is the application's responsibility; the transport does not derive it.
 
 Application body text cannot add header fields. No custom response headers,
 chunked encoding, interim responses, upgrades, or connection reuse are provided.
-This layout alone does not establish complete response-semantic conformance.
+
+`LeanHttp/Wire/Response.lean` proves the following for every response and HEAD flag:
+
+| Theorem | Guarantee |
+| --- | --- |
+| `render_represents` | Rendered bytes match `Spec.ResponseRepresents`. |
+| `render_contentLength` | The emitted Content-Length field decodes to the body's UTF-8 byte count, including for HEAD. |
+| `render_boundary`, `render_header`, `render_body_bytes` | The first header terminator ends the header block; the suffix is exactly the body, or empty for HEAD. |
+| `render_same_headers` | Changing body contents preserves headers when status, content type, and UTF-8 byte count stay unchanged. |
+
+These proofs do not establish full HTTP semantics, encoder conformance, compiled
+execution, or transport correctness.
 
 ## RFC Relationship
 

@@ -12,9 +12,6 @@ postpone it indefinitely.
 
 ## HTTP Implementation
 
-- [ ] Prove response framing and header separation. Content-Length must equal
-  the encoded body's byte count; HEAD must retain that length without sending
-  the body. Prove body text cannot alter the header block and test CRLF payloads.
 - [ ] Make request-dispatch transition rules explicit and connect their proofs
   to the server's executable decisions. Incomplete, rejected, and expired
   requests must not dispatch; an accepted request must select at most one handler.
